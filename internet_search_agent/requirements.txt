@@ -1,2 +1,10 @@
-ollama
+langchain
+langchain-community
+langchain_text_splitters
+langchain-google-genai
+google-generativeai
 duckduckgo-search
+requests
+pypdf
+pytest # Added for testing
+pytest-mock # Added for mocking in tests
