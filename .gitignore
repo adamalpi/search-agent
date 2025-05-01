@@ -138,3 +138,4 @@ cython_debug/
 
 # local application data
 internet_search_agent/pdf_cache
+internet_search_agent/summary_cache

@@ -4,13 +4,14 @@ import os # Import os for environment variables
 # from langchain_community.llms import Ollama # Remove Ollama import
 from langchain_google_genai import ChatGoogleGenerativeAI # Import Gemini
 from langchain.agents import AgentExecutor, create_react_agent
-from langchain.prompts import ChatPromptTemplate, PromptTemplate # Add PromptTemplate
+from langchain.prompts import ChatPromptTemplate # Remove PromptTemplate, no longer needed here
 from langchain.memory import ConversationBufferMemory
-from langchain.chains.summarize import load_summarize_chain # For summarization
-from langchain_text_splitters import RecursiveCharacterTextSplitter # For splitting docs
+# Remove summarization/splitting imports, moved to graph_builder
+# from langchain.chains.summarize import load_summarize_chain
+# from langchain_text_splitters import RecursiveCharacterTextSplitter
 import langchain # Import langchain base for debug setting
 from search_tool import search_langchain_tool
-from file_tools import download_pdf_tool, extract_pdf_text_tool # Remove DOWNLOAD_DIR import
+from file_tools import download_pdf_tool, extract_pdf_text_tool
 
 # Configure logging
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -25,7 +26,7 @@ logging.info("LangChain global debug mode enabled.")
 # OLLAMA_MODEL = "deepseek-r1:8b" # Commented out Ollama model
 GEMINI_MODEL = "gemini-2.5-pro-preview-03-25" # Main model for reasoning, synthesis, ReAct
 GEMINI_SUMMARY_MODEL = "gemini-2.5-flash-preview-04-17" # Faster model specifically for summarization
-PROMPT_FILE = "internet_search_agent/prompt_template.txt"
+PROMPT_FILE = "internet_search_agent/prompts/prompt_template.txt" # Updated path
 
 # --- LangChain Setup ---
 
@@ -100,149 +101,8 @@ react_agent_executor = AgentExecutor(
 )
 logging.info("Successfully created ReAct Agent Executor with memory.")
 
-# --- Sustainability Report Analysis Workflow ---
-
-# Setup for summarization
-# Using map_reduce, good for summarizing multiple docs independently then combining
-# Load map and combine prompts for summarization chain
-try:
-    with open("internet_search_agent/map_prompt.txt", "r") as f:
-        map_prompt_template = f.read()
-    map_prompt = PromptTemplate.from_template(map_prompt_template)
-
-    with open("internet_search_agent/combine_prompt.txt", "r") as f:
-        combine_prompt_template = f.read()
-    combine_prompt = PromptTemplate.from_template(combine_prompt_template)
-
-    summarize_chain = load_summarize_chain(
-        llm=llm_summarizer,
-        chain_type="map_reduce",
-        map_prompt=map_prompt,
-        combine_prompt=combine_prompt,
-        verbose=True # Use the dedicated summarizer LLM
-    )
-    logging.info("Successfully loaded custom map and combine prompts for summarization chain.")
-except Exception as e:
-    logging.error(f"Failed to load map/combine prompts or create summarize chain: {e}")
-    print(f"Error: Could not set up summarization chain with custom prompts.")
-    exit(1)
-# Setup for text splitting
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=100) # Reduced chunk size for potentially faster summarization steps
-
-def run_sustainability_report_analysis(industry: str) -> str:
-    """
-    Orchestrates the workflow to analyze sustainability reports for an industry.
-    1. Identifies key companies.
-    2. Searches for their latest sustainability reports (PDFs).
-    3. Downloads and extracts text from found PDFs.
-    4. Summarizes extracted texts.
-    5. Synthesizes trends across summaries.
-    """
-    print(f"\n--- Starting Sustainability Report Analysis for: {industry} ---")
-    all_extracted_texts = {} # Store extracted text: {company_name: text}
-    report_urls_found = {} # Store found URLs: {company_name: url}
-
-    # Step 1: Identify Key Companies
-    print("\nStep 1: Identifying key companies...")
-    try:
-        # Load company identification prompt from file
-        with open("internet_search_agent/company_identification_prompt.txt", "r") as f:
-            company_prompt_template = f.read()
-        company_prompt = company_prompt_template.format(industry=industry)
-        company_response_message = llm.invoke(company_prompt)
-        # Access the 'content' attribute of the AIMessage object
-        company_response_content = company_response_message.content
-        # Basic parsing, might need refinement
-        companies = [name.strip() for name in company_response_content.split(',') if name.strip()]
-        if not companies:
-            return f"Error: Could not identify companies for the '{industry}' industry based on LLM response content: {company_response_content}"
-        print(f"Identified companies: {', '.join(companies)}")
-    except Exception as e:
-        logging.error(f"Error identifying companies: {e}")
-        return f"Error: Failed to identify companies using the LLM. {e}"
-
-    # Step 2 & 3: Search, Download, Extract for each company
-    print("\nStep 2 & 3: Searching for reports, downloading, and extracting text...")
-    for company in companies:
-        print(f"\nProcessing company: {company}")
-        search_query = f"{company} sustainability report 2023 OR 2024 pdf filetype:pdf" # Target recent PDFs
-        print(f"  Searching with query: '{search_query}'")
-        search_results_str = search_langchain_tool.run(search_query)
-
-        # Attempt to find a PDF URL in the search results
-        pdf_url = None
-        # Simple regex to find URLs ending in .pdf within the search results string
-        pdf_links = re.findall(r'(https?://\S+\.pdf)', search_results_str, re.IGNORECASE)
-        if pdf_links:
-            pdf_url = pdf_links[0] # Take the first likely PDF link
-            print(f"  Found potential PDF URL: {pdf_url}")
-            report_urls_found[company] = pdf_url
-
-            # Download
-            print(f"  Downloading PDF...")
-            local_path = download_pdf_tool.run(pdf_url)
-            if local_path.startswith("Error"):
-                print(f"  Download failed: {local_path}")
-                continue # Skip to next company
-
-            # Extract Text
-            print(f"  Extracting text from: {local_path}")
-            extracted_text = extract_pdf_text_tool.run(local_path)
-            if extracted_text.startswith("Error") or extracted_text.startswith("Warning"):
-                print(f"  Text extraction failed or yielded no text: {extracted_text}")
-            else:
-                print(f"  Successfully extracted text (length: {len(extracted_text)}).")
-                all_extracted_texts[company] = extracted_text
-        else:
-            print(f"  Could not find a direct PDF link in search results for {company}.")
-
-    if not all_extracted_texts:
-        return "Analysis failed: No sustainability report text could be extracted for the identified companies."
-
-    # Step 4: Summarize each document
-    print("\nStep 4: Summarizing individual reports...")
-    individual_summaries = {}
-    for company, text in all_extracted_texts.items():
-        print(f"  Summarizing report for {company}...")
-        if not text.strip():
-            print(f"  Skipping empty text for {company}.")
-            individual_summaries[company] = "No text extracted."
-            continue
-        try:
-            # Split the document into chunks
-            docs = text_splitter.create_documents([text])
-            # Run the map-reduce summarization chain
-            summary = summarize_chain.run(docs)
-            individual_summaries[company] = summary
-            print(f"  Finished summarizing for {company}.")
-        except Exception as e:
-            logging.error(f"Error summarizing report for {company}: {e}")
-            print(f"  Error summarizing report for {company}. Skipping.")
-            individual_summaries[company] = f"Error during summarization: {e}"
-
-    if not any(not s.startswith("Error") and s != "No text extracted." for s in individual_summaries.values()):
-         return "Analysis failed: Could not generate summaries for any extracted reports."
-
-    # Step 5: Synthesize trends from summaries
-    print("\nStep 5: Synthesizing trends across summaries...")
-    combined_summaries = "\n\n".join([f"--- Summary for {company} ---\n{summary}"
-                                      for company, summary in individual_summaries.items()
-                                      if not summary.startswith("Error") and summary != "No text extracted."])
-
-    try:
-        # Load synthesis prompt from file
-        with open("internet_search_agent/synthesis_prompt.txt", "r") as f:
-            synthesis_prompt_template = f.read()
-        synthesis_prompt = synthesis_prompt_template.format(industry=industry, combined_summaries=combined_summaries)
-        final_synthesis_message = llm.invoke(synthesis_prompt)
-        # Access content from AIMessage
-        final_synthesis = final_synthesis_message.content
-        print("\n--- Analysis Complete ---")
-        # Prepend the list of found report URLs for context
-        report_list = "\n".join([f"- {comp}: {url}" for comp, url in report_urls_found.items()])
-        if not report_list: report_list = "No report URLs were successfully identified or downloaded."
-
-        return f"Analysis based on reports found for:\n{report_list}\n\n--- Synthesized Trends ---\n{final_synthesis}"
-    except Exception as e:
-        logging.error(f"Error during final synthesis: {e}")
-        return f"Error: Failed during the final synthesis step. {e}"
+# --- Sustainability Report Analysis Workflow (Moved to graph_builder.py) ---
+# The setup code above initializes variables (llm, llm_summarizer, react_agent_executor, etc.)
+# Some of these (llm, llm_summarizer) are imported by graph_builder.py
+# The react_agent_executor is imported by main.py for general queries.
+# The compiled graph app from graph_builder.py is imported by main.py for the analysis task.
