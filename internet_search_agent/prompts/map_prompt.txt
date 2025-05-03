@@ -1,5 +1,0 @@
-Write a concise summary of the following text extracted from a company's sustainability report. Focus on key initiatives, metrics, targets, and commitments related to environmental, social, and governance (ESG) factors mentioned in this specific text chunk:
-
-"{text}"
-
-CONCISE SUMMARY:

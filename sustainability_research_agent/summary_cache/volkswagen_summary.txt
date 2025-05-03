@@ -1,0 +1,11 @@
+Based on the provided summaries, the company's sustainability report details its commitment to integrating Environmental, Social, and Governance (ESG) principles, aligned with the SDGs and stakeholder priorities.
+
+**Overall:** The approach emphasizes ethical practices, technology, and responsible operations, viewing sustainability as a shared responsibility with clients and partners. Strategy leadership is split between Innovation (E) and HR (S).
+
+**Environmental (E):** Key focus areas include supporting clients' transition to net-zero logistics through data-driven low-carbon solutions (e.g., carbon accounting tools Pathway, Pledge) and reducing the company's own asset-light footprint via efficiency and waste minimization. The report details Scope 1, 2, and 3 emissions reporting (GHG Protocol), providing specific data for 2023/24, particularly detailed Scope 3 transport metrics, and notes efforts to improve data accuracy. While specific long-term reduction targets are not detailed in these excerpts, enhancing measurement and collaboration are highlighted.
+
+**Social (S):** The social strategy centers on people and community. Employee commitments include fostering an inclusive, ethical workplace with fair pay (Living Wage Employer 2024), ensuring health and safety (reporting zero incidents), investing in development, and focusing on diversity, inclusion, and retention (reporting metrics like decreased turnover and employee satisfaction). Community impact involves supporting local charities. Zero whistleblowing incidents related to human rights or corruption were reported.
+
+**Governance (G):** The provided text offers limited detail on governance beyond reporting zero whistleblowing incidents concerning human rights, corruption, or data breaches.
+
+**Reporting & Future:** The company tracks progress against relevant metrics and SDGs. A key forward-looking commitment is the plan to establish quantitative ESG targets across all areas for the 2025 report.

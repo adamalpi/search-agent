@@ -1,0 +1,11 @@
+Here is a concise combined summary of Unsworth's main ESG points from the provided report extracts:
+
+Unsworth's 2023/24 sustainability report outlines its commitment to an ESG framework linked to the SDGs, focusing on transparency and data-driven solutions.
+
+**Environment:** The primary focus is addressing climate change and responsible consumption in logistics. The report details 54.4 million kg CO2e operating emissions, over 99% from customer logistics (Scope 3). While own emissions are minor, they work to reduce footprint via efficiency and partner scrutiny. Key initiatives include the 'Pathway' tool for client carbon accounting and supporting decarbonisation through low-carbon solutions, alternative transport, optimization, and consolidation. Reporting follows GHG, GLEC, ISO standards, and while specific future numerical targets are not detailed in these excerpts, they track metrics and plan enhanced accuracy and collaboration on decarbonisation.
+
+**Social:** This is a significant focus, prioritizing an inclusive, ethical, and supportive workplace aligned with SDG 8. Key commitments include high quality of life, equality, fair pay, and employee development. Notably, they became a Living Wage Employer in 2024. Initiatives cover employee listening, wellbeing, safety, and training. The report provides extensive metrics on diversity, gender representation, retention, and training hours, highlighting zero reported incidents for Health, Safety, or Ethics. They are committed to employee retention, growth, and fostering an inclusive environment.
+
+**Governance:** Strategy is embedded via the ESG framework and materiality assessments, with a commitment to transparency and ethical growth. They focus on data-driven solutions, often through client collaboration (SDG 17). The report notes zero reported incidents for corruption/conflicts of interest and data breaches.
+
+**Overall:** Unsworth views sustainability as a shared responsibility. While early in their journey, they are focused on practical solutions. A key commitment for the next report (2025) is to set specific quantitative targets across all ESG pillars.

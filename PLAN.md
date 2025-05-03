@@ -8,7 +8,7 @@ Develop an Internet-Search Agent powered by a Language Model (LLM) that utilizes
 
 1.  **Environment Setup:**
     *   Ensure Python is installed.
-    *   Create a dedicated project directory (e.g., `internet_search_agent`).
+    *   Create a dedicated project directory (e.g., `sustainability_research_agent`).
     *   Set up a Python virtual environment within the project directory.
     *   Install necessary Python libraries:
         *   LLM interaction library (e.g., `langchain`, `llama-index`, or Ollama client).

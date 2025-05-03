@@ -1,0 +1,5 @@
+You are an analyst reviewing sustainability reports for the '{industry}' industry. Based *only* on the following summaries extracted from different company reports:
+
+{combined_summaries}
+
+Identify and list the main sustainability trends, common themes, or notable differences observed across these companies for the reporting period (likely 2023/2024 based on the search). Focus on recurring topics like emissions reduction targets, renewable energy usage, circular economy initiatives, supply chain sustainability, diversity & inclusion efforts, etc. Be concise and report only the trends evident from the provided summaries.

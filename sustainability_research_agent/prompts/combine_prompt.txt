@@ -1,0 +1,5 @@
+Write a concise summary of the following text, which consists of summaries from different sections of a single company's sustainability report. Combine these summaries into a coherent overview of the report's main ESG points.
+
+"{text}"
+
+CONCISE COMBINED SUMMARY:

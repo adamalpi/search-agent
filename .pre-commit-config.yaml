@@ -1,0 +1,16 @@
+# See https://pre-commit.com for more information
+# See https://docs.astral.sh/ruff/integrations/#pre-commit for ruff integration
+repos:
+# Removed pre-commit-hooks repo as ruff handles formatting/linting for Python
+# We can add back specific hooks like check-yaml if needed later.
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  # Ruff version. Must be kept in sync with pyproject.toml
+  rev: v0.6.1
+  hooks:
+  # Run the linter on Python files.
+    - id: ruff
+      files: \.py$  # Match files ending in .py
+      args: [--fix, --exit-non-zero-on-fix, --unsafe-fixes] # Fix issues (including unsafe ones) and fail if fixes are applied
+    # Run the formatter on Python files.
+    - id: ruff-format
+      files: \.py$  # Match files ending in .py

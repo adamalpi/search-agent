@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "internet-search-agent"
+version = "0.1.0"
+description = "Internet Search and Sustainability Analysis Agent with FastAPI backend and Streamlit UI."
+readme = "sustainability_research_agent/README.md" # Point to the backend readme for now
+requires-python = ">=3.9" # Specify a minimum Python version
+license = {text = "Proprietary"} # Or MIT, Apache-2.0 etc. if applicable
+# Add authors, maintainers, keywords, classifiers as needed
+
+dependencies = [
+    # Core LangChain/Graph/LLM
+    "langchain==0.3.24",
+    "langchain-community==0.3.23",
+    "langchain-google-genai==2.0.10",
+    "google-generativeai==0.8.5",
+    "langgraph==0.4.1",
+    "langchain-text-splitters==0.3.8",
+    # Tools & Utilities
+    "duckduckgo-search==8.0.1",
+    "requests==2.32.3",
+    "pypdf==5.4.0",
+    # API Server
+    "fastapi==0.115.12",
+    "uvicorn[standard]==0.34.0",
+    "pydantic==2.11.2",
+    # UI
+    "streamlit==1.45.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest==8.3.5",
+    "pytest-mock==3.14.0",
+]
+dev = [
+    "internet-search-agent[test]", # Include test dependencies in dev
+    # Add other dev tools like linters (ruff, mypy), formatters (black)
+    "pre-commit==3.8.0", # Added pre-commit framework
+    "ruff==0.6.1",       # Added ruff linter/formatter
+    # "mypy",
+    # "black",
+]
+
+# Optional: Define entry points if you want runnable commands
+# [project.scripts]
+# run-api = "sustainability_research_agent.api_server:main" # Example if api_server had a main()
+# run-ui = "streamlit run streamlit_ui/streamlit_app.py" # This doesn't work directly here

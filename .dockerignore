@@ -1,0 +1,27 @@
+# Git
+.git
+.gitignore
+
+# Python virtual environment
+.venv/
+venv/
+env/
+
+# Python cache / compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Cache directories
+sustainability_research_agent/pdf_cache/
+sustainability_research_agent/summary_cache/
+
+# Test artifacts
+.pytest_cache/
+htmlcov/
+*.cover
+
+# IDE / OS specific
+.vscode/
+.idea/
+*.DS_Store

@@ -1,0 +1,51 @@
+# Use an official Python runtime as a parent image
+FROM python:3.11-slim as base
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+ENV PYTHONPATH=/app
+# Set uv version to install
+ENV UV_VERSION=0.1.16
+
+# Declare build argument for Google API Key
+ARG GOOGLE_API_KEY
+# Set environment variable from build argument
+ENV GOOGLE_API_KEY=${GOOGLE_API_KEY}
+# Install uv
+RUN pip install --no-cache-dir uv==${UV_VERSION}
+
+# Create and set the working directory
+WORKDIR /app
+
+# --- Build Stage ---
+FROM base as builder
+# Copy only necessary files for dependency installation
+COPY pyproject.toml ./
+# Install dependencies using uv
+# This creates a virtual environment at /app/.venv
+RUN uv venv && \
+    uv pip install --system --no-cache -e ".[test]"
+    # Using --system to install directly into the Python environment for simplicity in the image
+    # Alternatively, install into the venv and activate it in the final stage
+
+# --- Final Stage ---
+FROM base
+# Copy the virtual environment from the builder stage
+# COPY --from=builder /app/.venv /.venv
+# ENV PATH="/.venv/bin:$PATH"
+# Copy installed packages directly if using --system in builder
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copy the application code
+# Copy internet_search_agent package and streamlit_ui (though UI isn't run here)
+COPY sustainability_research_agent .
+
+# Expose the port the app runs on
+EXPOSE 8000
+
+# Define the command to run the application
+# Use the absolute path within the container
+# Ensure GOOGLE_API_KEY is passed as an environment variable when running the container
+CMD ["uvicorn", "api_server:app", "--host", "0.0.0.0", "--port", "8000"]

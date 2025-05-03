@@ -1,1 +1,0 @@
-List the top 5-7 major global companies known for operating primarily in the '{industry}' industry. List only the company names, separated by commas.
