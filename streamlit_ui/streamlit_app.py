@@ -1,7 +1,8 @@
-import streamlit as st
-import requests
-import time
 import os
+import time
+
+import requests
+import streamlit as st
 
 # --- Configuration ---
 # Assumes the FastAPI server is running locally on port 8000
@@ -13,9 +14,7 @@ API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
 def query_agent(query: str):
     """Sends a query to the FastAPI /query endpoint."""
     try:
-        response = requests.post(
-            f"{API_BASE_URL}/query", json={"query": query}, timeout=60
-        )  # Add timeout
+        response = requests.post(f"{API_BASE_URL}/query", json={"query": query}, timeout=60)  # Add timeout
         response.raise_for_status()  # Raise exception for bad status codes
         return response.json().get("response", "No response field found.")
     except requests.exceptions.RequestException as e:
@@ -29,9 +28,7 @@ def query_agent(query: str):
 def submit_analysis_request(industry: str):
     """Submits an analysis request to the FastAPI /analyze endpoint."""
     try:
-        response = requests.post(
-            f"{API_BASE_URL}/analyze", json={"industry": industry}, timeout=15
-        )
+        response = requests.post(f"{API_BASE_URL}/analyze", json={"industry": industry}, timeout=15)
         response.raise_for_status()
         return response.json()  # Returns {"message": "...", "task_id": "..."}
     except requests.exceptions.RequestException as e:
@@ -105,9 +102,7 @@ if st.button("Start Analysis", key="start_analysis"):
             if submit_response and "task_id" in submit_response:
                 st.session_state.analysis_task_id = submit_response["task_id"]
                 st.session_state.analysis_status = "PENDING"
-                st.success(
-                    f"Analysis task submitted successfully! Task ID: {st.session_state.analysis_task_id}"
-                )
+                st.success(f"Analysis task submitted successfully! Task ID: {st.session_state.analysis_task_id}")
                 st.info("Status will update below automatically (polling every 10s).")
             else:
                 st.error("Failed to submit analysis task.")

@@ -1,15 +1,15 @@
-import logging
-import requests
-import os
 import hashlib  # For creating safe filenames from URLs
-from pypdf import PdfReader
+import logging
+import os
+from urllib.parse import unquote, urlparse
+
+import requests
 from langchain.tools import Tool
-from urllib.parse import urlparse, unquote
+from pypdf import PdfReader
+
 # Remove tempfile import
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # --- Configuration ---
 # Use a persistent cache directory relative to this file's location
@@ -44,7 +44,6 @@ def _url_to_filename(url: str) -> str:
         # Single-pass sanitization: keep only alphanumeric, underscore, hyphen, and dot
         safe_name = "".join(c for c in raw_name if c.isalnum() or c in ("_", "-", "."))
 
-        # Split the sanitized name first
         base_name, ext = os.path.splitext(safe_name)
 
         # Now check if the extension is '.pdf' (case-insensitive) and if base_name exists
@@ -54,14 +53,10 @@ def _url_to_filename(url: str) -> str:
             return filename
     except Exception as e:
         # Optional: Log the exception if debugging is needed
-        logging.warning(
-            f"Exception during filename generation for {url}: {e}. Falling back to hash."
-        )
+        logging.warning(f"Exception during filename generation for {url}: {e}. Falling back to hash.")
         pass  # Fallback if any error occurs
 
-    # Fallback if parsing, sanitization, or checks fail
-
-    # Fallback if anything above fails
+    # Fallback if generating a readable name fails
     return f"{url_hash}.pdf"
 
 
@@ -96,11 +91,9 @@ def download_pdf(url: str) -> str:
     try:
         # Use headers common for browsers to help with access
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"  # noqa: E501
         }
-        response = requests.get(
-            url, stream=True, timeout=30, headers=headers, allow_redirects=True
-        )
+        response = requests.get(url, stream=True, timeout=30, headers=headers, allow_redirects=True)
         response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
 
         content_type = response.headers.get("content-type", "").lower()
@@ -128,15 +121,13 @@ def download_pdf(url: str) -> str:
                 pass
         return f"Error: Failed to download PDF from {url}. Reason: {e}"
     except Exception as e:
-        logging.error(
-            f"An unexpected error occurred during PDF download from {url}: {e}"
-        )
+        logging.error(f"An unexpected error occurred during PDF download from {url}: {e}")
         return f"Error: An unexpected error occurred during download. Details: {e}"
 
 
 def extract_text_from_pdf(local_filepath: str) -> str:
     """
-    Extracts text content from a local PDF file. (No changes needed here for caching)
+    Extracts text content from a local PDF file.
 
     Args:
         local_filepath: The path to the local PDF file.
@@ -165,9 +156,7 @@ def extract_text_from_pdf(local_filepath: str) -> str:
             )
             return f"Warning: No text could be extracted from PDF: {local_filepath}. File might be image-based."
 
-        logging.info(
-            f"Successfully extracted text from PDF: {local_filepath} (Length: {len(text)})"
-        )
+        logging.info(f"Successfully extracted text from PDF: {local_filepath} (Length: {len(text)})")
         return text
 
     except Exception as e:
@@ -180,13 +169,13 @@ def extract_text_from_pdf(local_filepath: str) -> str:
 download_pdf_tool = Tool(
     name="Download PDF",
     func=download_pdf,
-    description="Downloads a PDF file from a given URL to a local cache, returning the local path. Checks cache first. Input MUST be a valid URL potentially pointing to a PDF. Output is the local file path or an error message.",
+    description="Downloads a PDF file from a given URL to a local cache, returning the local path. Checks cache first. Input MUST be a valid URL potentially pointing to a PDF. Output is the local file path or an error message.",  # noqa: E501
 )
 
 extract_pdf_text_tool = Tool(
     name="Extract PDF Text",
     func=extract_text_from_pdf,
-    description="Extracts text content from a locally stored PDF file (likely from the cache). Input MUST be a valid local file path to a PDF (usually the output of the 'Download PDF' tool). Output is the extracted text or an error message.",
+    description="Extracts text content from a locally stored PDF file (likely from the cache). Input MUST be a valid local file path to a PDF (usually the output of the 'Download PDF' tool). Output is the extracted text or an error message.",  # noqa: E501
 )
 
 # --- Example Usage (Moved to tests/test_file_tools.py) ---

@@ -1,14 +1,12 @@
-import sqlite3
 import logging
 import os
-from typing import List, Dict, Any, Optional
+import sqlite3
+from typing import Any, Dict, List, Optional
 
 # Define the path for the SQLite database file relative to this file
 DB_PATH = os.path.join(os.path.dirname(__file__), "analysis_history.db")
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
 def init_db():
@@ -38,9 +36,7 @@ def init_db():
             conn.close()
 
 
-def log_task_status(
-    task_id: str, industry: str, status: str, result_summary: Optional[str] = None
-):
+def log_task_status(task_id: str, industry: str, status: str, result_summary: Optional[str] = None):
     """Logs or updates the status of an analysis task in the database."""
     conn = None  # Ensure conn is defined before try block
     try:
@@ -57,9 +53,7 @@ def log_task_status(
             (task_id, industry, status, result_summary),
         )
         conn.commit()
-        logging.debug(
-            f"Logged status '{status}' for task {task_id} (Industry: {industry})"
-        )
+        logging.debug(f"Logged status '{status}' for task {task_id} (Industry: {industry})")
     except sqlite3.Error as e:
         logging.error(f"Database error logging task {task_id}: {e}", exc_info=True)
     finally:
@@ -67,9 +61,7 @@ def log_task_status(
             conn.close()
 
 
-def query_tasks(
-    limit: int = 5, industry_filter: Optional[str] = None
-) -> List[Dict[str, Any]]:
+def query_tasks(limit: int = 5, industry_filter: Optional[str] = None) -> List[Dict[str, Any]]:
     """Queries completed analysis tasks from the database."""
     conn = None
     results = []
@@ -94,9 +86,7 @@ def query_tasks(
 
         cursor.execute(base_query, params)
         results = [dict(row) for row in cursor.fetchall()]
-        logging.debug(
-            f"Queried {len(results)} tasks (limit={limit}, industry='{industry_filter}')"
-        )
+        logging.debug(f"Queried {len(results)} tasks (limit={limit}, industry='{industry_filter}')")
 
     except sqlite3.Error as e:
         logging.error(f"Database error querying tasks: {e}", exc_info=True)
@@ -112,14 +102,10 @@ if __name__ == "__main__":
     print("Initializing DB...")
     init_db()
     print("Logging sample tasks...")
-    log_task_status(
-        "task-1", "Automotive", "COMPLETED", "Summary for Automotive task 1..."
-    )
+    log_task_status("task-1", "Automotive", "COMPLETED", "Summary for Automotive task 1...")
     log_task_status("task-2", "Tech", "COMPLETED", "Summary for Tech task 1...")
     log_task_status("task-3", "Automotive", "FAILED", "Error message...")
-    log_task_status(
-        "task-4", "Automotive", "COMPLETED", "Summary for Automotive task 2..."
-    )
+    log_task_status("task-4", "Automotive", "COMPLETED", "Summary for Automotive task 2...")
     print("Querying last 3 completed tasks:")
     tasks = query_tasks(limit=3)
     for task in tasks:

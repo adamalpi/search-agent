@@ -2,16 +2,12 @@ import logging
 import os
 from typing import Dict
 
-# Removed: from research_agent.agent import llm_summarizer # LLM/Chain initialized elsewhere
-from research_agent.file_tools import (
-    download_pdf_tool,
-    extract_pdf_text_tool,
-)  # Import relative to sustainability_research_agent
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+# Removed: from research_agent.agent import llm_summarizer # LLM/Chain initialized elsewhere
+from research_agent.file_tools import download_pdf_tool, extract_pdf_text_tool
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # --- Define Cache Directory ---
 # Ensure this path is correct relative to where this module might be run from
@@ -22,7 +18,6 @@ logging.info(f"Research Tools: Using summary cache directory: {SUMMARY_CACHE_DIR
 
 # --- Initialize Components ---
 
-# Setup for text splitting
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=100)
 logging.info("Research Tools: Initialized text splitter.")
 
@@ -54,39 +49,27 @@ def download_and_extract_reports(report_urls: Dict[str, str]) -> Dict[str, str]:
             # Download (uses cache via file_tools)
             local_path = download_pdf_tool.run(url)
             if local_path.startswith("Error"):
-                logging.error(
-                    f"Research Tools: Download failed for {company}: {local_path}"
-                )
+                logging.error(f"Research Tools: Download failed for {company}: {local_path}")
                 extracted_texts[company] = f"Download failed: {local_path}"
                 continue
 
-            # Extract Text
             extracted_text = extract_pdf_text_tool.run(local_path)
-            if extracted_text.startswith("Error") or extracted_text.startswith(
-                "Warning"
-            ):
-                logging.warning(
-                    f"Research Tools: Text extraction failed/empty for {company}: {extracted_text}"
-                )
-                extracted_texts[company] = extracted_text  # Store warning/error
+            if extracted_text.startswith("Error") or extracted_text.startswith("Warning"):
+                logging.warning(f"Research Tools: Text extraction failed/empty for {company}: {extracted_text}")
+                extracted_texts[company] = extracted_text
             else:
                 logging.info(
                     f"Research Tools: Successfully extracted text for {company} (length: {len(extracted_text)})."
                 )
                 extracted_texts[company] = extracted_text
         except Exception as e:
-            logging.error(
-                f"Research Tools: Error during download/extraction for {company}: {e}",
-                exc_info=True,
-            )
+            logging.error(f"Research Tools: Error during download/extraction for {company}: {e}", exc_info=True)
             extracted_texts[company] = f"Error during download/extraction: {e}"
 
     return extracted_texts
 
 
-def summarize_extracted_texts(
-    extracted_texts: Dict[str, str], summarize_chain
-) -> Dict[str, str]:
+def summarize_extracted_texts(extracted_texts: Dict[str, str], summarize_chain) -> Dict[str, str]:
     """Summarizes the extracted text for each report, using a cache.
 
     Args:
@@ -97,14 +80,9 @@ def summarize_extracted_texts(
         A dictionary mapping company names to summaries or error messages.
     """
     if summarize_chain is None:
-        logging.error(
-            "Research Tools: Summarize chain was not provided. Cannot summarize."
-        )
+        logging.error("Research Tools: Summarize chain was not provided. Cannot summarize.")
         # Return errors for all companies
-        return {
-            company: "Error: Summarization chain not provided."
-            for company in extracted_texts
-        }
+        return {company: "Error: Summarization chain not provided." for company in extracted_texts}
 
     individual_summaries: Dict[str, str] = {}
     logging.info("Research Tools: Summarizing extracted report texts.")
@@ -120,9 +98,7 @@ def summarize_extracted_texts(
             logging.warning(
                 f"Research Tools: Skipping summarization for {company} due to previous error or empty text."
             )
-            individual_summaries[company] = (
-                "Skipped due to previous error or empty text."
-            )
+            individual_summaries[company] = "Skipped due to previous error or empty text."
             continue
 
         # Use a simple filename based on company name for cache.
@@ -130,18 +106,18 @@ def summarize_extracted_texts(
         cache_filepath = os.path.join(SUMMARY_CACHE_DIR, cache_filename)
 
         if os.path.exists(cache_filepath):
-            logging.info(
-                f"Research Tools: Cache hit for {company} summary: Loading from {cache_filepath}"
-            )
+            logging.info(f"Research Tools: Cache hit for {company} summary: Loading from {cache_filepath}")
             try:
                 with open(cache_filepath, "r") as f:
                     summary = f.read()
                 individual_summaries[company] = summary
-                continue  # Move to next company
+                continue
             except Exception as e:
-                logging.warning(
-                    f"Research Tools: Failed to read cached summary for {company} from {cache_filepath}: {e}. Will regenerate."
+                log_message = (
+                    f"Research Tools: Failed to read cached summary for {company} "
+                    f"from {cache_filepath}: {e}. Will regenerate."
                 )
+                logging.warning(log_message)
 
         # If cache miss or read error, generate summary
         logging.info(f"Research Tools: Cache miss for {company}. Generating summary...")
@@ -151,23 +127,15 @@ def summarize_extracted_texts(
             individual_summaries[company] = summary
             logging.info(f"Research Tools: Finished generating summary for {company}.")
 
-            # Save summary to cache
             try:
                 with open(cache_filepath, "w") as f:
                     f.write(summary)
-                logging.info(
-                    f"Research Tools: Saved summary for {company} to cache: {cache_filepath}"
-                )
+                logging.info(f"Research Tools: Saved summary for {company} to cache: {cache_filepath}")
             except Exception as e:
-                logging.error(
-                    f"Research Tools: Failed to save summary to cache for {company} at {cache_filepath}: {e}"
-                )
+                logging.error(f"Research Tools: Failed to save summary to cache for {company} at {cache_filepath}: {e}")
 
         except Exception as e:
-            logging.error(
-                f"Research Tools: Error summarizing report for {company}: {e}",
-                exc_info=True,
-            )
+            logging.error(f"Research Tools: Error summarizing report for {company}: {e}", exc_info=True)
             individual_summaries[company] = f"Error during summarization: {e}"
 
     return individual_summaries

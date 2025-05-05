@@ -53,3 +53,10 @@ ui = [
 # [project.scripts]
 # run-api = "sustainability_research_agent.api_server:main" # Example if api_server had a main()
 # run-ui = "streamlit run streamlit_ui/streamlit_app.py" # This doesn't work directly here
+[tool.ruff]
+# Enable Pyflakes (F) and pycodestyle (E) error rules by default.
+# Add isort (I) rules for import sorting.
+lint.select = ["E", "F", "I"]
+
+# Set line length to 120
+line-length = 120

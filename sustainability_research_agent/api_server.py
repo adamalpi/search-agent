@@ -1,18 +1,19 @@
-import logging
 import asyncio
+import logging
 import uuid
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from pydantic import BaseModel, Field
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
+
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from langchain_core.messages import (
-    HumanMessage,
     AIMessage,
     BaseMessage,
-)  # For message handling
+    HumanMessage,
+)
+from pydantic import BaseModel, Field
 from research_agent.database import (
     init_db,
     log_task_status,
-)  # Import database functions
+)
 
 # Ensure agent and graph are initialized before FastAPI starts
 # We might need to adjust agent.py/graph_builder.py slightly if they exit on error
@@ -21,7 +22,7 @@ try:
 
     from research_agent.graph_builder import (
         build_unified_graph,
-    )  # Import the new unified graph builder
+    )
 except ImportError as e:
     print(
         f"FATAL: Could not import agent/graph components. Ensure agent.py and graph_builder.py are correct. Error: {e}"
@@ -32,9 +33,7 @@ except Exception as e:
     exit(1)
 
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logging.getLogger("uvicorn.error").setLevel(logging.WARNING)  # Quieter Uvicorn logs
 
 # --- FastAPI App Setup ---
@@ -45,7 +44,7 @@ app = FastAPI(
 )
 
 try:
-    unified_graph_app = build_unified_graph()  # Initialize the unified graph
+    unified_graph_app = build_unified_graph()
 except Exception as e:
     logging.error(
         f"Failed to build the unified graph during API server startup: {e}",
@@ -56,7 +55,7 @@ except Exception as e:
 
 
 # Initialize the database on startup
-init_db()
+init_db()  # Initialize the database on startup
 
 
 # --- Data Models (Pydantic) ---
@@ -95,9 +94,7 @@ analysis_tasks: Dict[str, AnalysisTaskStatus] = {}
 
 async def run_analysis_background(task_id: str, industry: str):
     """Runs the LangGraph analysis in the background."""
-    logging.info(
-        f"Starting background analysis task {task_id} for industry: {industry}"
-    )
+    logging.info(f"Starting background analysis task {task_id} for industry: {industry}")
     # Log initial RUNNING status to DB and update in-memory dict
     analysis_tasks[task_id] = AnalysisTaskStatus(task_id=task_id, status="RUNNING")
     log_task_status(task_id=task_id, industry=industry, status="RUNNING")
@@ -107,7 +104,6 @@ async def run_analysis_background(task_id: str, industry: str):
         # For simplicity, running invoke in executor thread pool via asyncio.to_thread
         # Note: LangGraph's invoke might block the event loop if not handled carefully.
         # Consider using graph_app.astream or running in a separate process for true non-blocking.
-        # Invoke the unified graph for analysis
         final_state = await asyncio.to_thread(unified_graph_app.invoke, inputs)
 
         # Extract results based on the UnifiedGraphState structure
@@ -121,9 +117,7 @@ async def run_analysis_background(task_id: str, industry: str):
             result = "Graph finished, but no synthesis result or error message found."
             status = "UNKNOWN"  # Or potentially FAILED depending on expected outcome
         # Update in-memory status (for immediate checks via /analysis/{task_id})
-        analysis_tasks[task_id] = AnalysisTaskStatus(
-            task_id=task_id, status=status, result=result
-        )
+        analysis_tasks[task_id] = AnalysisTaskStatus(task_id=task_id, status=status, result=result)
         # Log final status and result to the database
         log_task_status(
             task_id=task_id,
@@ -134,9 +128,7 @@ async def run_analysis_background(task_id: str, industry: str):
         logging.info(f"Completed background analysis task {task_id}. Status: {status}")
 
     except Exception as e:
-        logging.error(
-            f"Error in background analysis task {task_id}: {e}", exc_info=True
-        )
+        logging.error(f"Error in background analysis task {task_id}: {e}", exc_info=True)
         error_message = f"An unexpected error occurred: {e}"
         # Update in-memory status
         analysis_tasks[task_id] = AnalysisTaskStatus(
@@ -159,9 +151,7 @@ async def run_analysis_background(task_id: str, industry: str):
 @app.post("/query", response_model=QueryResponse)
 async def handle_query(request: QueryRequest):
     """Handles general queries using the unified graph."""
-    logging.info(
-        f"Received query: {request.query}, History length: {len(request.messages)}"
-    )
+    logging.info(f"Received query: {request.query}, History length: {len(request.messages)}")
 
     # Convert incoming message dicts to LangChain BaseMessage objects
     previous_messages: List[BaseMessage] = []
@@ -185,17 +175,13 @@ async def handle_query(request: QueryRequest):
         final_state = await asyncio.to_thread(unified_graph_app.invoke, graph_input)
 
         if final_state.get("error_message"):
-            logging.error(
-                f"Error processing query via graph: {final_state['error_message']}"
-            )
+            logging.error(f"Error processing query via graph: {final_state['error_message']}")
             raise HTTPException(
                 status_code=500,
                 detail=f"Error processing query: {final_state['error_message']}",
             )
 
-        agent_response = final_state.get(
-            "agent_response", "Agent did not provide a final answer."
-        )
+        agent_response = final_state.get("agent_response", "Agent did not provide a final answer.")
         updated_messages_lc = final_state.get("messages", [])
 
         # Convert updated LangChain messages back to dicts for JSON response

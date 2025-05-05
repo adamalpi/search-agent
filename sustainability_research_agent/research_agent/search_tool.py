@@ -1,20 +1,17 @@
 import logging
+
 from duckduckgo_search import DDGS
 from langchain.tools import Tool
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # --- Configuration ---
-MAX_SEARCH_RESULTS = 5  # Number of search results to retrieve
+MAX_SEARCH_RESULTS = 5
 
 # --- Core Search Functionality ---
 
 
-def _perform_duckduckgo_search(
-    query: str, max_results: int = MAX_SEARCH_RESULTS
-) -> str:
+def _perform_duckduckgo_search(query: str, max_results: int = MAX_SEARCH_RESULTS) -> str:
     """
     Performs a web search using DuckDuckGo and returns formatted results as a string.
     This is the underlying function used by the LangChain tool.
@@ -26,9 +23,7 @@ def _perform_duckduckgo_search(
     Returns:
         A formatted string containing the search results, or a message indicating no results.
     """
-    logging.info(
-        f"Performing DuckDuckGo search for query: '{query}' (max_results={max_results})"
-    )
+    logging.info(f"Performing DuckDuckGo search for query: '{query}' (max_results={max_results})")
     results_list = []
     try:
         with DDGS() as ddgs:
@@ -61,13 +56,12 @@ def _perform_duckduckgo_search(
 
 # --- LangChain Tool Definition ---
 
-# Create an instance of the LangChain Tool
 # Note: The function passed to Tool should ideally only accept a single string argument (the query).
 # We use the internal _perform_duckduckgo_search function.
 search_langchain_tool = Tool(
     name="DuckDuckGo Search",
     func=_perform_duckduckgo_search,
-    description="Useful for when you need to answer questions about current events, specific facts, or information not found in your internal knowledge base. Input should be a search query.",
+    description="Useful for when you need to answer questions about current events, specific facts, or information not found in your internal knowledge base. Input should be a search query.",  # noqa: E501
 )
 
 # --- Example Usage (Moved to tests/test_search_tool.py) ---

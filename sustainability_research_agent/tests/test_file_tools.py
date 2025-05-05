@@ -1,16 +1,16 @@
-import pytest
 import os
 from unittest.mock import MagicMock, mock_open
-import requests
 
-from research_agent.file_tools import (  # Updated import path
+import pytest
+import requests
+from research_agent.file_tools import (
+    CACHE_DIR,
     _is_valid_url,
     _url_to_filename,
     download_pdf,
-    extract_text_from_pdf,
     download_pdf_tool,
     extract_pdf_text_tool,
-    CACHE_DIR,  # Import cache dir to check file creation/existence
+    extract_text_from_pdf,
 )
 
 # --- Test Helper Functions ---
@@ -19,9 +19,9 @@ from research_agent.file_tools import (  # Updated import path
 def test_is_valid_url():
     assert _is_valid_url("http://example.com") is True
     assert _is_valid_url("https://example.com/path?query=1") is True
-    assert _is_valid_url("ftp://example.com") is False  # Wrong scheme
-    assert _is_valid_url("example.com") is False  # No scheme
-    assert _is_valid_url("http://") is False  # No netloc
+    assert _is_valid_url("ftp://example.com") is False
+    assert _is_valid_url("example.com") is False
+    assert _is_valid_url("http://") is False
     assert _is_valid_url("") is False
 
 
@@ -30,31 +30,26 @@ def test_url_to_filename():
     fname1 = _url_to_filename(url1)
     assert fname1.startswith("report_")
     assert fname1.endswith(".pdf")
-    assert len(fname1) > 15  # Should include hash part
+    assert len(fname1) > 15
 
     url2 = "https://example.com/very/long/path/name/that/is/way/too/long/for/a/filename/document.pdf"
     fname2 = _url_to_filename(url2)
     assert fname2.startswith("document_")
     assert fname2.endswith(".pdf")
-    assert len(fname2) < 70  # Should be truncated + hash part
+    assert len(fname2) < 70
 
     url3 = "http://example.com/no_extension"
     fname3 = _url_to_filename(url3)
-    assert not fname3.startswith("no_extension")  # Should fallback to hash
-    assert fname3.endswith(".pdf")  # Assumes pdf extension
+    assert not fname3.startswith("no_extension")
+    assert fname3.endswith(".pdf")
 
     url4 = "http://example.com/weird%20chars?.pdf"
     fname4 = _url_to_filename(url4)
-    # print(f"\nDEBUG (test): fname4 = '{fname4}'") # Remove print statement inside test
     # Check that the function falls back to hash for this problematic URL
-    assert (
-        "weirdchars" not in fname4
-    ), f"Expected fallback, but 'weirdchars' found in filename: {fname4}"
-    assert (
-        "_" not in fname4
-    ), f"Expected fallback (no separator), but '_' found in filename: {fname4}"
-    assert fname4.endswith(".pdf")  # Should still end with .pdf
-    assert len(fname4) > 60  # Hash filenames are long
+    assert "weirdchars" not in fname4, f"Expected fallback, but 'weirdchars' found in filename: {fname4}"
+    assert "_" not in fname4, f"Expected fallback (no separator), but '_' found in filename: {fname4}"
+    assert fname4.endswith(".pdf")
+    assert len(fname4) > 60
 
 
 # --- Test Core Functions (with Mocks) ---
@@ -74,21 +69,17 @@ def test_download_pdf_cache_hit(mocker):
     filename = _url_to_filename(url)
     filepath = os.path.join(CACHE_DIR, filename)
 
-    # Create a dummy file in the cache
     with open(filepath, "w") as f:
         f.write("dummy pdf content")
 
     # Mock requests.get to ensure it's NOT called
-    mock_get = mocker.patch(
-        "research_agent.file_tools.requests.get"
-    )  # Corrected mock path
+    mock_get = mocker.patch("research_agent.file_tools.requests.get")
 
     result = download_pdf(url)
 
     assert result == filepath
     mock_get.assert_not_called()
 
-    # Clean up dummy file
     os.remove(filepath)
 
 
@@ -106,14 +97,12 @@ def test_download_pdf_cache_miss_success(mocker):
     mock_response = MagicMock()
     mock_response.raise_for_status.return_value = None
     mock_response.headers = {"content-type": "application/pdf"}
-    # Simulate content chunks
     mock_response.iter_content.return_value = [b"pdf", b" content"]
     mock_get = mocker.patch(
-        "research_agent.file_tools.requests.get",  # Corrected mock path
+        "research_agent.file_tools.requests.get",
         return_value=mock_response,
     )
 
-    # Mock open to check file writing
     m = mock_open()
     mocker.patch("builtins.open", m)
 
@@ -136,22 +125,19 @@ def test_download_pdf_request_error(mocker):
     filepath = os.path.join(CACHE_DIR, filename)
 
     # Mock requests.get to raise an error
-    mock_get = mocker.patch(
-        "research_agent.file_tools.requests.get"
-    )  # Corrected mock path
+    mock_get = mocker.patch("research_agent.file_tools.requests.get")
     mock_get.side_effect = requests.exceptions.RequestException("Connection failed")
 
     result = download_pdf(url)
 
     assert result.startswith("Error: Failed to download PDF")
     assert "Connection failed" in result
-    assert not os.path.exists(filepath)  # Ensure no partial file left
+    assert not os.path.exists(filepath)
 
 
 def test_extract_text_from_pdf_success(mocker):
     """Test successful text extraction."""
     filepath = os.path.join(CACHE_DIR, "dummy_extract.pdf")
-    # Create dummy file for the test
     with open(filepath, "w") as f:
         f.write("not real pdf")
 
@@ -163,7 +149,7 @@ def test_extract_text_from_pdf_success(mocker):
     mock_reader_instance = MagicMock()
     mock_reader_instance.pages = [mock_page1, mock_page2]
     mocker.patch(
-        "research_agent.file_tools.PdfReader",  # Corrected mock path
+        "research_agent.file_tools.PdfReader",
         return_value=mock_reader_instance,
     )
 
@@ -171,7 +157,6 @@ def test_extract_text_from_pdf_success(mocker):
 
     assert result == "Page 1 text.\nPage 2 text.\n"
 
-    # Clean up
     os.remove(filepath)
 
 
@@ -182,11 +167,11 @@ def test_extract_text_from_pdf_no_text(mocker):
         f.write("not real pdf")
 
     mock_page = MagicMock()
-    mock_page.extract_text.return_value = ""  # Simulate no text
+    mock_page.extract_text.return_value = ""
     mock_reader_instance = MagicMock()
     mock_reader_instance.pages = [mock_page]
     mocker.patch(
-        "research_agent.file_tools.PdfReader",  # Corrected mock path
+        "research_agent.file_tools.PdfReader",
         return_value=mock_reader_instance,
     )
 
@@ -214,12 +199,10 @@ def test_download_pdf_tool_run(mocker):
     mock_tool_run.return_value = "/path/to/cached/file.pdf"
 
     url = "http://example.com/tool_test.pdf"
-    result = download_pdf_tool.run(url)  # This will now call the mocked _run
+    result = download_pdf_tool.run(url)
 
     assert result == "/path/to/cached/file.pdf"
-    mock_tool_run.assert_called_once_with(
-        url
-    )  # Check if the tool's run method was called
+    mock_tool_run.assert_called_once_with(url)
 
 
 def test_extract_pdf_text_tool_run(mocker):
@@ -229,9 +212,7 @@ def test_extract_pdf_text_tool_run(mocker):
     mock_tool_run.return_value = "Extracted text content."
 
     filepath = "/path/to/local.pdf"
-    result = extract_pdf_text_tool.run(filepath)  # This will now call the mocked _run
+    result = extract_pdf_text_tool.run(filepath)
 
     assert result == "Extracted text content."
-    mock_tool_run.assert_called_once_with(
-        filepath
-    )  # Check if the tool's run method was called
+    mock_tool_run.assert_called_once_with(filepath)

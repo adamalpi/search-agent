@@ -1,48 +1,34 @@
 import logging
-import re
 import os
-from typing import List, Dict, Optional
+import re
+from typing import Dict, List, Optional
 
-from langgraph.graph import StateGraph, END, MessagesState
+from langchain.agents import AgentExecutor, create_react_agent
+from langchain.chains.summarize import load_summarize_chain
 from langchain.memory import ConversationBufferMemory
-from langchain.prompts import PromptTemplate  # Added ChatPromptTemplate
-from langchain.agents import AgentExecutor, create_react_agent  # Added agent imports
-from langchain_core.messages import (
-    HumanMessage,
-    AIMessage,
-)  # Import specific message types
+from langchain.prompts import PromptTemplate
 
 # Updated import path again for InMemoryChatMessageHistory
 from langchain_core.chat_history import InMemoryChatMessageHistory
-from langchain.chains.summarize import (
-    load_summarize_chain,
-)  # Need this for chain creation
+from langchain_core.messages import AIMessage, HumanMessage
+from langgraph.graph import END, MessagesState, StateGraph
 
 # Import the initializer, not the instances directly
 from research_agent.agent import initialize_gemini, load_prompt
-
-# Import individual tools explicitly
-from research_agent.search_tool import search_langchain_tool
 from research_agent.file_tools import download_pdf_tool, extract_pdf_text_tool
-from research_agent.history_tools import (
-    query_analysis_history_tool,
-)  # Import the new history tool
-from research_agent.research_tools import (
-    download_and_extract_reports,
-    summarize_extracted_texts,
-)
+from research_agent.history_tools import query_analysis_history_tool
+from research_agent.research_tools import download_and_extract_reports, summarize_extracted_texts
+from research_agent.search_tool import search_langchain_tool
 
 # Define the list of tools for the basic agent node
 BASIC_AGENT_TOOLS = [
     search_langchain_tool,
     download_pdf_tool,
     extract_pdf_text_tool,
-    query_analysis_history_tool,  # Add the new tool here
+    query_analysis_history_tool,
 ]
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # --- Initialize LLM and Agent ---
 # Initialize Gemini, capturing both the main LLM and the summarizer LLM
@@ -135,23 +121,17 @@ def search_for_reports(state: UnifiedGraphState) -> UnifiedGraphState:
         try:
             search_results_str = search_langchain_tool.run(search_query)
             # Find the first PDF link
-            pdf_links = re.findall(
-                r"(https?://\S+\.pdf)", search_results_str, re.IGNORECASE
-            )
+            pdf_links = re.findall(r"(https?://\S+\.pdf)", search_results_str, re.IGNORECASE)
             if pdf_links:
                 pdf_url = pdf_links[0]
                 logging.info(f"Found potential PDF URL for {company}: {pdf_url}")
                 report_urls[company] = pdf_url
             else:
-                logging.warning(
-                    f"No direct PDF link found in search results for {company}."
-                )
+                logging.warning(f"No direct PDF link found in search results for {company}.")
                 # Store None or skip? Storing None for now to indicate search was attempted.
                 report_urls[company] = None
         except Exception as e:
-            logging.error(
-                f"Error searching for report for {company}: {e}", exc_info=True
-            )
+            logging.error(f"Error searching for report for {company}: {e}", exc_info=True)
             report_urls[company] = f"Error during search: {e}"  # Store error indication
 
     return {"report_urls": report_urls}
@@ -175,9 +155,7 @@ def download_and_extract(state: UnifiedGraphState) -> UnifiedGraphState:
     except Exception as e:
         logging.error(f"Error calling download_and_extract_reports: {e}", exc_info=True)
         # Populate errors for all expected companies? Or just return a general error?
-        error_texts = {
-            company: f"Error in download/extract step: {e}" for company in report_urls
-        }
+        error_texts = {company: f"Error in download/extract step: {e}" for company in report_urls}
         return {
             "extracted_texts": error_texts,
             "error_message": f"Failed during download/extraction: {e}",
@@ -200,9 +178,7 @@ def summarize_reports(state: UnifiedGraphState) -> UnifiedGraphState:
         return {"individual_summaries": individual_summaries}
     except Exception as e:
         logging.error(f"Error calling summarize_extracted_texts: {e}", exc_info=True)
-        error_summaries = {
-            company: f"Error in summarization step: {e}" for company in extracted_texts
-        }
+        error_summaries = {company: f"Error in summarization step: {e}" for company in extracted_texts}
         return {
             "individual_summaries": error_summaries,
             "error_message": f"Failed during summarization: {e}",
@@ -246,7 +222,7 @@ def build_unified_graph():
             chain_type="map_reduce",
             map_prompt=map_prompt,
             combine_prompt=combine_prompt,
-            verbose=True,  # Or False
+            verbose=True,
         )
         logging.info("Graph Builder: Summarize chain initialized.")
 
@@ -255,9 +231,7 @@ def build_unified_graph():
         logging.info("Graph Builder: ReAct agent initialized.")
 
     except Exception as e:
-        logging.error(
-            f"Graph Builder: Failed to initialize LLMs or chains: {e}", exc_info=True
-        )
+        logging.error(f"Graph Builder: Failed to initialize LLMs or chains: {e}", exc_info=True)
         # Handle initialization failure - maybe raise exception or return a dummy graph?
         raise RuntimeError(f"Failed to initialize graph components: {e}") from e
 
@@ -291,9 +265,7 @@ def build_unified_graph():
         logging.info(f"Running basic agent with query: {query}")
         try:
             response = react_agent_executor.invoke({"input": query})
-            agent_response = response.get(
-                "output", "Agent did not provide a final answer."
-            )
+            agent_response = response.get("output", "Agent did not provide a final answer.")
             logging.info(f"Basic agent response: {agent_response}")
             updated_messages = temp_memory.chat_memory.messages
             return {"messages": updated_messages, "agent_response": agent_response}
@@ -309,26 +281,18 @@ def build_unified_graph():
         industry = state["industry"]
         logging.info(f"Identifying companies for industry: {industry}")
         try:
-            with open(
-                "prompts/company_identification_prompt.txt", "r"
-            ) as f:  # Path relative to execution root
+            with open("prompts/company_identification_prompt.txt", "r") as f:  # Path relative to execution root
                 company_prompt_template = f.read()
             company_prompt = company_prompt_template.format(industry=industry)
             # Use llm from outer scope
             company_response_message = llm.invoke(company_prompt)
             company_response_content = company_response_message.content
-            companies = [
-                name.strip()
-                for name in company_response_content.split(",")
-                if name.strip()
-            ]
+            companies = [name.strip() for name in company_response_content.split(",") if name.strip()]
             if not companies:
                 logging.warning(
                     f"LLM did not identify companies for industry '{industry}'. Response: {company_response_content}"
                 )
-                return {
-                    "error_message": f"Could not identify companies for industry '{industry}'."
-                }
+                return {"error_message": f"Could not identify companies for industry '{industry}'."}
             logging.info(f"Identified companies: {companies}")
             return {
                 "companies": companies,
@@ -352,27 +316,19 @@ def build_unified_graph():
             if company in report_urls:
                 continue
             logging.info(f"Searching for report for: {company}")
-            search_query = (
-                f"{company} sustainability report 2023 OR 2024 pdf filetype:pdf"
-            )
+            search_query = f"{company} sustainability report 2023 OR 2024 pdf filetype:pdf"
             try:
                 search_results_str = search_langchain_tool.run(search_query)
-                pdf_links = re.findall(
-                    r"(https?://\S+\.pdf)", search_results_str, re.IGNORECASE
-                )
+                pdf_links = re.findall(r"(https?://\S+\.pdf)", search_results_str, re.IGNORECASE)
                 if pdf_links:
                     pdf_url = pdf_links[0]
                     logging.info(f"Found potential PDF URL for {company}: {pdf_url}")
                     report_urls[company] = pdf_url
                 else:
-                    logging.warning(
-                        f"No direct PDF link found in search results for {company}."
-                    )
+                    logging.warning(f"No direct PDF link found in search results for {company}.")
                     report_urls[company] = None
             except Exception as e:
-                logging.error(
-                    f"Error searching for report for {company}: {e}", exc_info=True
-                )
+                logging.error(f"Error searching for report for {company}: {e}", exc_info=True)
                 report_urls[company] = f"Error during search: {e}"
         return {"report_urls": report_urls}
 
@@ -391,13 +347,8 @@ def build_unified_graph():
             extracted_texts = download_and_extract_reports(report_urls)
             return {"extracted_texts": extracted_texts}
         except Exception as e:
-            logging.error(
-                f"Error calling download_and_extract_reports: {e}", exc_info=True
-            )
-            error_texts = {
-                company: f"Error in download/extract step: {e}"
-                for company in report_urls
-            }
+            logging.error(f"Error calling download_and_extract_reports: {e}", exc_info=True)
+            error_texts = {company: f"Error in download/extract step: {e}" for company in report_urls}
             return {
                 "extracted_texts": error_texts,
                 "error_message": f"Failed during download/extraction: {e}",
@@ -415,18 +366,11 @@ def build_unified_graph():
             return {"individual_summaries": {}}
         try:
             # Call the function from research_tools, passing the summarize_chain from outer scope
-            individual_summaries = summarize_extracted_texts(
-                extracted_texts, summarize_chain
-            )
+            individual_summaries = summarize_extracted_texts(extracted_texts, summarize_chain)
             return {"individual_summaries": individual_summaries}
         except Exception as e:
-            logging.error(
-                f"Error calling summarize_extracted_texts: {e}", exc_info=True
-            )
-            error_summaries = {
-                company: f"Error in summarization step: {e}"
-                for company in extracted_texts
-            }
+            logging.error(f"Error calling summarize_extracted_texts: {e}", exc_info=True)
+            error_summaries = {company: f"Error in summarization step: {e}" for company in extracted_texts}
             return {
                 "individual_summaries": error_summaries,
                 "error_message": f"Failed during summarization: {e}",
@@ -443,26 +387,17 @@ def build_unified_graph():
         valid_summaries = {
             comp: summary
             for comp, summary in individual_summaries.items()
-            if summary
-            and not summary.startswith("Error")
-            and not summary.startswith("Skipped")
+            if summary and not summary.startswith("Error") and not summary.startswith("Skipped")
         }
         if not valid_summaries:
             logging.warning("No valid summaries available for synthesis.")
-            return {
-                "error_message": "Analysis failed: No valid summaries could be generated."
-            }
+            return {"error_message": "Analysis failed: No valid summaries could be generated."}
         logging.info("Synthesizing trends across summaries.")
         combined_summaries = "\n\n".join(
-            [
-                f"--- Summary for {company} ---\n{summary}"
-                for company, summary in valid_summaries.items()
-            ]
+            [f"--- Summary for {company} ---\n{summary}" for company, summary in valid_summaries.items()]
         )
         try:
-            with open(
-                "prompts/synthesis_prompt.txt", "r"
-            ) as f:  # Path relative to execution root
+            with open("prompts/synthesis_prompt.txt", "r") as f:  # Path relative to execution root
                 synthesis_prompt_template = f.read()
             synthesis_prompt = synthesis_prompt_template.format(
                 industry=industry, combined_summaries=combined_summaries
@@ -471,14 +406,15 @@ def build_unified_graph():
             final_synthesis_message = llm.invoke(synthesis_prompt)
             final_synthesis = final_synthesis_message.content
             report_list = "\n".join(
-                [
-                    f"- {comp}: {report_urls.get(comp, 'URL not found/processed')}"
-                    for comp in valid_summaries.keys()
-                ]
+                [f"- {comp}: {report_urls.get(comp, 'URL not found/processed')}" for comp in valid_summaries.keys()]
             )
             if not report_list:
                 report_list = "No report URLs were successfully processed."
-            final_result = f"Analysis based on reports processed for:\n{report_list}\n\n--- Synthesized Trends ---\n{final_synthesis}"
+            # Construct the final result string step-by-step for readability and line length
+            result_header = "Analysis based on reports processed for:\n"
+            report_section = f"{report_list}\n\n"
+            trends_header = "--- Synthesized Trends ---\n"
+            final_result = result_header + report_section + trends_header + final_synthesis
             logging.info("Finished synthesizing trends.")
             return {"synthesis_result": final_result}
         except Exception as e:
@@ -521,12 +457,12 @@ def build_unified_graph():
     # Define conditional edges from the router node
     # Use the dedicated 'decide_route' function for the routing logic
     workflow.add_conditional_edges(
-        "route_request",  # Starting node
-        decide_route,  # Function to determine the next node key
+        "route_request",
+        decide_route,
         {
-            "basic_agent_path": "run_basic_agent",  # Map key to next node
-            "research_path": "identify_companies",  # Map key to next node
-            "error": "handle_error",  # Route to error handler if input is invalid
+            "basic_agent_path": "run_basic_agent",
+            "research_path": "identify_companies",
+            "error": "handle_error",
         },
     )
 
