@@ -9,16 +9,18 @@ from pypdf import PdfReader
 
 # Remove tempfile import
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+# Removed logging.basicConfig - Handled centrally
+logger = logging.getLogger(__name__)  # Add module-specific logger
 
 # --- Configuration ---
 # Use a persistent cache directory relative to this file's location
 # __file__ gives the path of the current file (file_tools.py)
 # os.path.dirname gets the directory containing it
 # os.path.join creates the full path to 'pdf_cache'
-CACHE_DIR = os.path.join(os.path.dirname(__file__), "pdf_cache")
-os.makedirs(CACHE_DIR, exist_ok=True)
-logging.info(f"Using PDF cache directory: {CACHE_DIR}")
+# Go one level up from the current file's directory to get the project root
+PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
+CACHE_DIR = os.path.join(PROJECT_ROOT, "pdf_cache")
+logger.info(f"PDF cache directory configured: {CACHE_DIR}")  # Use logger (Directory created on demand)
 
 # --- Helper Functions ---
 
@@ -53,7 +55,7 @@ def _url_to_filename(url: str) -> str:
             return filename
     except Exception as e:
         # Optional: Log the exception if debugging is needed
-        logging.warning(f"Exception during filename generation for {url}: {e}. Falling back to hash.")
+        logger.warning(f"Exception during filename generation for {url}: {e}. Falling back to hash.")  # Use logger
         pass  # Fallback if any error occurs
 
     # Fallback if generating a readable name fails
@@ -83,11 +85,14 @@ def download_pdf(url: str) -> str:
     filename = _url_to_filename(url)
     local_filepath = os.path.join(CACHE_DIR, filename)
 
+    # Ensure cache directory exists before checking/writing
+    os.makedirs(CACHE_DIR, exist_ok=True)
+
     if os.path.exists(local_filepath):
-        logging.info(f"Cache hit: PDF already exists at {local_filepath} for URL {url}")
+        logger.info(f"Cache hit: PDF already exists at {local_filepath} for URL {url}")  # Use logger
         return local_filepath
 
-    logging.info(f"Cache miss: Attempting to download PDF from: {url}")
+    logger.info(f"Cache miss: Attempting to download PDF from: {url}")  # Use logger
     try:
         # Use headers common for browsers to help with access
         headers = {
@@ -98,7 +103,7 @@ def download_pdf(url: str) -> str:
 
         content_type = response.headers.get("content-type", "").lower()
         if "application/pdf" not in content_type:
-            logging.warning(
+            logger.warning(  # Use logger
                 f"Content-Type for {url} is '{content_type}', not 'application/pdf'. Attempting download anyway."
             )
             # Decide whether to proceed or return error - proceeding for now
@@ -108,11 +113,11 @@ def download_pdf(url: str) -> str:
             for chunk in response.iter_content(chunk_size=8192):
                 f.write(chunk)
 
-        logging.info(f"Successfully downloaded PDF to cache: {local_filepath}")
+        logger.info(f"Successfully downloaded PDF to cache: {local_filepath}")  # Use logger
         return local_filepath
 
     except requests.exceptions.RequestException as e:
-        logging.error(f"Error downloading PDF from {url}: {e}")
+        logger.error(f"Error downloading PDF from {url}: {e}")  # Use logger
         # Clean up potentially incomplete file on error
         if os.path.exists(local_filepath):
             try:
@@ -121,7 +126,7 @@ def download_pdf(url: str) -> str:
                 pass
         return f"Error: Failed to download PDF from {url}. Reason: {e}"
     except Exception as e:
-        logging.error(f"An unexpected error occurred during PDF download from {url}: {e}")
+        logger.error(f"An unexpected error occurred during PDF download from {url}: {e}")  # Use logger
         return f"Error: An unexpected error occurred during download. Details: {e}"
 
 
@@ -136,7 +141,7 @@ def extract_text_from_pdf(local_filepath: str) -> str:
         The extracted text content as a single string if successful,
         otherwise an error message string.
     """
-    logging.info(f"Attempting to extract text from PDF: {local_filepath}")
+    logger.info(f"Attempting to extract text from PDF: {local_filepath}")  # Use logger
     if not os.path.exists(local_filepath):
         return f"Error: PDF file not found at path: {local_filepath}"
     if not local_filepath.lower().endswith(".pdf"):
@@ -151,16 +156,16 @@ def extract_text_from_pdf(local_filepath: str) -> str:
                 text += page_text + "\n"  # Add newline between pages
 
         if not text:
-            logging.warning(
+            logger.warning(  # Use logger
                 f"No text could be extracted from PDF: {local_filepath}. It might be image-based or protected."
             )
             return f"Warning: No text could be extracted from PDF: {local_filepath}. File might be image-based."
 
-        logging.info(f"Successfully extracted text from PDF: {local_filepath} (Length: {len(text)})")
+        logger.info(f"Successfully extracted text from PDF: {local_filepath} (Length: {len(text)})")  # Use logger
         return text
 
     except Exception as e:
-        logging.error(f"Error extracting text from PDF {local_filepath}: {e}")
+        logger.error(f"Error extracting text from PDF {local_filepath}: {e}")  # Use logger
         return f"Error: Failed to extract text from PDF {local_filepath}. Reason: {e}"
 
 

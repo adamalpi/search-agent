@@ -20,6 +20,8 @@ from research_agent.history_tools import query_analysis_history_tool
 from research_agent.research_tools import download_and_extract_reports, summarize_extracted_texts
 from research_agent.search_tool import search_langchain_tool
 
+logger = logging.getLogger(__name__)  # Add module-specific logger
+
 # Define the list of tools for the basic agent node
 BASIC_AGENT_TOOLS = [
     search_langchain_tool,
@@ -28,7 +30,7 @@ BASIC_AGENT_TOOLS = [
     query_analysis_history_tool,
 ]
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+# logging.basicConfig(...) # Removed - Handled centrally
 
 # --- Initialize LLM and Agent ---
 # Initialize Gemini, capturing both the main LLM and the summarizer LLM
@@ -111,12 +113,12 @@ def search_for_reports(state: UnifiedGraphState) -> UnifiedGraphState:
         return {}  # Stop if previous node failed
     companies = state["companies"]
     report_urls = state.get("report_urls", {})
-    logging.info(f"Searching for reports for companies: {companies}")
+    logger.info(f"Searching for reports for companies: {companies}")  # Use logger
 
     for company in companies:
         if company in report_urls:
             continue  # Skip if already processed (e.g., retry)
-        logging.info(f"Searching for report for: {company}")
+        logger.info(f"Searching for report for: {company}")  # Use logger
         search_query = f"{company} sustainability report 2023 OR 2024 pdf filetype:pdf"
         try:
             search_results_str = search_langchain_tool.run(search_query)
@@ -124,14 +126,14 @@ def search_for_reports(state: UnifiedGraphState) -> UnifiedGraphState:
             pdf_links = re.findall(r"(https?://\S+\.pdf)", search_results_str, re.IGNORECASE)
             if pdf_links:
                 pdf_url = pdf_links[0]
-                logging.info(f"Found potential PDF URL for {company}: {pdf_url}")
+                logger.info(f"Found potential PDF URL for {company}: {pdf_url}")  # Use logger
                 report_urls[company] = pdf_url
             else:
-                logging.warning(f"No direct PDF link found in search results for {company}.")
+                logger.warning(f"No direct PDF link found in search results for {company}.")  # Use logger
                 # Store None or skip? Storing None for now to indicate search was attempted.
                 report_urls[company] = None
         except Exception as e:
-            logging.error(f"Error searching for report for {company}: {e}", exc_info=True)
+            logger.error(f"Error searching for report for {company}: {e}", exc_info=True)  # Use logger
             report_urls[company] = f"Error during search: {e}"  # Store error indication
 
     return {"report_urls": report_urls}
@@ -141,11 +143,11 @@ def download_and_extract(state: UnifiedGraphState) -> UnifiedGraphState:
     """Node wrapper for downloading PDFs and extracting text using research_tools."""
     print("--- Node: download_and_extract (using research_tools) ---")
     if state.get("error_message"):
-        logging.warning("Skipping download_and_extract due to previous error.")
+        logger.warning("Skipping download_and_extract due to previous error.")  # Use logger
         return {}
     report_urls = state.get("report_urls")
     if not report_urls:
-        logging.warning("No report URLs found in state for download_and_extract.")
+        logger.warning("No report URLs found in state for download_and_extract.")  # Use logger
         # Decide if this is an error or just an empty step
         return {"extracted_texts": {}}  # Return empty dict if no URLs
 
@@ -153,7 +155,7 @@ def download_and_extract(state: UnifiedGraphState) -> UnifiedGraphState:
         extracted_texts = download_and_extract_reports(report_urls)
         return {"extracted_texts": extracted_texts}
     except Exception as e:
-        logging.error(f"Error calling download_and_extract_reports: {e}", exc_info=True)
+        logger.error(f"Error calling download_and_extract_reports: {e}", exc_info=True)  # Use logger
         # Populate errors for all expected companies? Or just return a general error?
         error_texts = {company: f"Error in download/extract step: {e}" for company in report_urls}
         return {
@@ -166,18 +168,18 @@ def summarize_reports(state: UnifiedGraphState) -> UnifiedGraphState:
     """Node wrapper for summarizing extracted text using research_tools."""
     print("--- Node: summarize_reports (using research_tools) ---")
     if state.get("error_message"):
-        logging.warning("Skipping summarize_reports due to previous error.")
+        logger.warning("Skipping summarize_reports due to previous error.")  # Use logger
         return {}
     extracted_texts = state.get("extracted_texts")
     if not extracted_texts:
-        logging.warning("No extracted texts found in state for summarize_reports.")
+        logger.warning("No extracted texts found in state for summarize_reports.")  # Use logger
         return {"individual_summaries": {}}  # Return empty dict if no texts
 
     try:
         individual_summaries = summarize_extracted_texts(extracted_texts)
         return {"individual_summaries": individual_summaries}
     except Exception as e:
-        logging.error(f"Error calling summarize_extracted_texts: {e}", exc_info=True)
+        logger.error(f"Error calling summarize_extracted_texts: {e}", exc_info=True)  # Use logger
         error_summaries = {company: f"Error in summarization step: {e}" for company in extracted_texts}
         return {
             "individual_summaries": error_summaries,
@@ -190,7 +192,7 @@ def handle_error(state: UnifiedGraphState) -> UnifiedGraphState:
     """Handles errors captured in the state."""
     print("--- Node: handle_error ---")
     error = state.get("error_message", "Unknown error")
-    logging.error(f"Graph execution failed: {error}")
+    logger.error(f"Graph execution failed: {error}")  # Use logger
     # We can potentially add more sophisticated error handling/reporting here
     # For now, just ensure the error message is in the final state
     return {"error_message": error}
@@ -224,14 +226,14 @@ def build_unified_graph():
             combine_prompt=combine_prompt,
             verbose=True,
         )
-        logging.info("Graph Builder: Summarize chain initialized.")
+        logger.info("Graph Builder: Summarize chain initialized.")  # Use logger
 
         # Initialize ReAct agent (without executor)
         react_agent = create_react_agent(llm, BASIC_AGENT_TOOLS, react_prompt_template)
-        logging.info("Graph Builder: ReAct agent initialized.")
+        logger.info("Graph Builder: ReAct agent initialized.")  # Use logger
 
     except Exception as e:
-        logging.error(f"Graph Builder: Failed to initialize LLMs or chains: {e}", exc_info=True)
+        logger.error(f"Graph Builder: Failed to initialize LLMs or chains: {e}", exc_info=True)  # Use logger
         # Handle initialization failure - maybe raise exception or return a dummy graph?
         raise RuntimeError(f"Failed to initialize graph components: {e}") from e
 
@@ -262,15 +264,15 @@ def build_unified_graph():
             verbose=True,
             handle_parsing_errors=True,
         )
-        logging.info(f"Running basic agent with query: {query}")
+        logger.info(f"Running basic agent with query: {query}")  # Use logger
         try:
             response = react_agent_executor.invoke({"input": query})
             agent_response = response.get("output", "Agent did not provide a final answer.")
-            logging.info(f"Basic agent response: {agent_response}")
+            logger.info(f"Basic agent response: {agent_response}")  # Use logger
             updated_messages = temp_memory.chat_memory.messages
             return {"messages": updated_messages, "agent_response": agent_response}
         except Exception as e:
-            logging.error(f"Error in run_basic_agent: {e}", exc_info=True)
+            logger.error(f"Error in run_basic_agent: {e}", exc_info=True)  # Use logger
             return {"error_message": f"Failed during basic agent execution: {e}"}
 
     def identify_companies(state: UnifiedGraphState) -> UnifiedGraphState:
@@ -279,7 +281,7 @@ def build_unified_graph():
         if state.get("error_message"):
             return {}
         industry = state["industry"]
-        logging.info(f"Identifying companies for industry: {industry}")
+        logger.info(f"Identifying companies for industry: {industry}")  # Use logger
         try:
             with open("prompts/company_identification_prompt.txt", "r") as f:  # Path relative to execution root
                 company_prompt_template = f.read()
@@ -289,11 +291,11 @@ def build_unified_graph():
             company_response_content = company_response_message.content
             companies = [name.strip() for name in company_response_content.split(",") if name.strip()]
             if not companies:
-                logging.warning(
+                logger.warning(  # Use logger
                     f"LLM did not identify companies for industry '{industry}'. Response: {company_response_content}"
                 )
                 return {"error_message": f"Could not identify companies for industry '{industry}'."}
-            logging.info(f"Identified companies: {companies}")
+            logger.info(f"Identified companies: {companies}")  # Use logger
             return {
                 "companies": companies,
                 "report_urls": {},
@@ -301,7 +303,7 @@ def build_unified_graph():
                 "individual_summaries": {},
             }
         except Exception as e:
-            logging.error(f"Error in identify_companies: {e}", exc_info=True)
+            logger.error(f"Error in identify_companies: {e}", exc_info=True)  # Use logger
             return {"error_message": f"Failed to identify companies: {e}"}
 
     def search_for_reports(state: UnifiedGraphState) -> UnifiedGraphState:
@@ -311,24 +313,24 @@ def build_unified_graph():
             return {}
         companies = state["companies"]
         report_urls = state.get("report_urls", {})
-        logging.info(f"Searching for reports for companies: {companies}")
+        logger.info(f"Searching for reports for companies: {companies}")  # Use logger
         for company in companies:
             if company in report_urls:
                 continue
-            logging.info(f"Searching for report for: {company}")
+            logger.info(f"Searching for report for: {company}")  # Use logger
             search_query = f"{company} sustainability report 2023 OR 2024 pdf filetype:pdf"
             try:
                 search_results_str = search_langchain_tool.run(search_query)
                 pdf_links = re.findall(r"(https?://\S+\.pdf)", search_results_str, re.IGNORECASE)
                 if pdf_links:
                     pdf_url = pdf_links[0]
-                    logging.info(f"Found potential PDF URL for {company}: {pdf_url}")
+                    logger.info(f"Found potential PDF URL for {company}: {pdf_url}")  # Use logger
                     report_urls[company] = pdf_url
                 else:
-                    logging.warning(f"No direct PDF link found in search results for {company}.")
+                    logger.warning(f"No direct PDF link found in search results for {company}.")  # Use logger
                     report_urls[company] = None
             except Exception as e:
-                logging.error(f"Error searching for report for {company}: {e}", exc_info=True)
+                logger.error(f"Error searching for report for {company}: {e}", exc_info=True)  # Use logger
                 report_urls[company] = f"Error during search: {e}"
         return {"report_urls": report_urls}
 
@@ -336,18 +338,18 @@ def build_unified_graph():
         """Node wrapper for downloading PDFs and extracting text using research_tools."""
         print("--- Node: download_and_extract (using research_tools) ---")
         if state.get("error_message"):
-            logging.warning("Skipping download_and_extract due to previous error.")
+            logger.warning("Skipping download_and_extract due to previous error.")  # Use logger
             return {}
         report_urls = state.get("report_urls")
         if not report_urls:
-            logging.warning("No report URLs found in state for download_and_extract.")
+            logger.warning("No report URLs found in state for download_and_extract.")  # Use logger
             return {"extracted_texts": {}}
         try:
             # Call the function from research_tools
             extracted_texts = download_and_extract_reports(report_urls)
             return {"extracted_texts": extracted_texts}
         except Exception as e:
-            logging.error(f"Error calling download_and_extract_reports: {e}", exc_info=True)
+            logger.error(f"Error calling download_and_extract_reports: {e}", exc_info=True)  # Use logger
             error_texts = {company: f"Error in download/extract step: {e}" for company in report_urls}
             return {
                 "extracted_texts": error_texts,
@@ -358,18 +360,18 @@ def build_unified_graph():
         """Node wrapper for summarizing extracted text using research_tools."""
         print("--- Node: summarize_reports (using research_tools) ---")
         if state.get("error_message"):
-            logging.warning("Skipping summarize_reports due to previous error.")
+            logger.warning("Skipping summarize_reports due to previous error.")  # Use logger
             return {}
         extracted_texts = state.get("extracted_texts")
         if not extracted_texts:
-            logging.warning("No extracted texts found in state for summarize_reports.")
+            logger.warning("No extracted texts found in state for summarize_reports.")  # Use logger
             return {"individual_summaries": {}}
         try:
             # Call the function from research_tools, passing the summarize_chain from outer scope
             individual_summaries = summarize_extracted_texts(extracted_texts, summarize_chain)
             return {"individual_summaries": individual_summaries}
         except Exception as e:
-            logging.error(f"Error calling summarize_extracted_texts: {e}", exc_info=True)
+            logger.error(f"Error calling summarize_extracted_texts: {e}", exc_info=True)  # Use logger
             error_summaries = {company: f"Error in summarization step: {e}" for company in extracted_texts}
             return {
                 "individual_summaries": error_summaries,
@@ -390,9 +392,9 @@ def build_unified_graph():
             if summary and not summary.startswith("Error") and not summary.startswith("Skipped")
         }
         if not valid_summaries:
-            logging.warning("No valid summaries available for synthesis.")
+            logger.warning("No valid summaries available for synthesis.")  # Use logger
             return {"error_message": "Analysis failed: No valid summaries could be generated."}
-        logging.info("Synthesizing trends across summaries.")
+        logger.info("Synthesizing trends across summaries.")  # Use logger
         combined_summaries = "\n\n".join(
             [f"--- Summary for {company} ---\n{summary}" for company, summary in valid_summaries.items()]
         )
@@ -415,26 +417,26 @@ def build_unified_graph():
             report_section = f"{report_list}\n\n"
             trends_header = "--- Synthesized Trends ---\n"
             final_result = result_header + report_section + trends_header + final_synthesis
-            logging.info("Finished synthesizing trends.")
+            logger.info("Finished synthesizing trends.")  # Use logger
             return {"synthesis_result": final_result}
         except Exception as e:
-            logging.error(f"Error during final synthesis: {e}", exc_info=True)
+            logger.error(f"Error during final synthesis: {e}", exc_info=True)  # Use logger
             return {"error_message": f"Failed during the final synthesis step: {e}"}
 
     def handle_error(state: UnifiedGraphState) -> UnifiedGraphState:
         """Handles errors captured in the state."""
         print("--- Node: handle_error ---")
         error = state.get("error_message", "Unknown error")
-        logging.error(f"Graph execution failed: {error}")
+        logger.error(f"Graph execution failed: {error}")  # Use logger
         return {"error_message": error}
 
     def route_research_step(state: UnifiedGraphState) -> str:
         """Checks for errors and decides whether to continue or handle error."""
         if state.get("error_message"):
-            logging.warning("Error detected in research step, routing to handle_error.")
+            logger.warning("Error detected in research step, routing to handle_error.")  # Use logger
             return "handle_error"
         else:
-            logging.info("No error detected in research step, continuing.")
+            logger.info("No error detected in research step, continuing.")  # Use logger
             return "continue"
 
     # --- Build the Graph Structure ---

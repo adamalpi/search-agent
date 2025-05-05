@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Optional
 
 # Define the path for the SQLite database file relative to this file
 DB_PATH = os.path.join(os.path.dirname(__file__), "analysis_history.db")
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+# Removed logging configuration - Handled centrally by setup_logging() in entry points (main.py/api_server.py)
+# logging.basicConfig(...)
 
 
 def init_db():

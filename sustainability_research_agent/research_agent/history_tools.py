@@ -7,7 +7,8 @@ from pydantic import BaseModel, Field, ValidationError
 
 from research_agent.database import query_tasks
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+# Removed logging.basicConfig - Handled centrally
+logger = logging.getLogger(__name__)  # Add module-specific logger
 
 
 # --- Pydantic Schema for Tool Arguments ---
@@ -27,7 +28,7 @@ def _query_analysis_history_func(tool_input: str) -> str:
     Parses JSON input, queries the database for completed analysis tasks, and formats the results.
     Input should be a JSON string like '{"limit": 5, "industry_filter": "Automotive"}'.
     """
-    logging.info(f"Tool: Received input string: {tool_input}")
+    logger.info(f"Tool: Received input string: {tool_input}")  # Use logger
     limit = 5
     industry_filter = None
 
@@ -36,24 +37,24 @@ def _query_analysis_history_func(tool_input: str) -> str:
         validated_data = QueryHistorySchema.model_validate(data)
         limit = validated_data.limit
         industry_filter = validated_data.industry_filter
-        logging.info(f"Tool: Parsed arguments - limit={limit}, industry='{industry_filter}'")
+        logger.info(f"Tool: Parsed arguments - limit={limit}, industry='{industry_filter}'")  # Use logger
 
     except json.JSONDecodeError:
-        logging.warning(f"Tool: Input is not valid JSON: {tool_input}. Using default parameters.")
+        logger.warning(f"Tool: Input is not valid JSON: {tool_input}. Using default parameters.")  # Use logger
         # Proceed with default parameters if input is not valid JSON
         # Alternatively, return an error message:
         # return f"Error: Input must be a valid JSON string. Received: {tool_input}"
     except ValidationError as e:
-        logging.warning(f"Tool: Input validation failed: {e}. Using default parameters.")
+        logger.warning(f"Tool: Input validation failed: {e}. Using default parameters.")  # Use logger
         # Proceed with default parameters if validation fails
         # Alternatively, return an error message:
         # return f"Error: Input validation failed: {e}. Received: {tool_input}"
     except Exception as e:
-        logging.error(f"Tool: Unexpected error processing input '{tool_input}': {e}", exc_info=True)
+        logger.error(f"Tool: Unexpected error processing input '{tool_input}': {e}", exc_info=True)  # Use logger
         return f"Error processing tool input: {e}"
 
     # --- Original query logic starts here ---
-    logging.info(f"Tool: Querying analysis history (limit={limit}, industry='{industry_filter}')")
+    logger.info(f"Tool: Querying analysis history (limit={limit}, industry='{industry_filter}')")  # Use logger
     try:
         tasks: List[Dict[str, Any]] = query_tasks(limit=limit, industry_filter=industry_filter)
 
@@ -76,7 +77,7 @@ def _query_analysis_history_func(tool_input: str) -> str:
         return formatted_results.strip()
 
     except Exception as e:
-        logging.error(f"Error querying analysis history: {e}", exc_info=True)
+        logger.error(f"Error querying analysis history: {e}", exc_info=True)  # Use logger
         return f"An error occurred while querying the analysis history: {e}"
 
 

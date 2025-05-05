@@ -9,6 +9,7 @@ from langchain_core.messages import (
     BaseMessage,
     HumanMessage,
 )
+from logging_config import setup_logging  # Import the setup function
 from pydantic import BaseModel, Field
 from research_agent.database import (
     init_db,
@@ -33,8 +34,10 @@ except Exception as e:
     exit(1)
 
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logging.getLogger("uvicorn.error").setLevel(logging.WARNING)  # Quieter Uvicorn logs
+# logging.basicConfig(...) # Removed old config
+# logging.getLogger("uvicorn.error")... # Removed old config (handled in setup_logging if needed)
+
+setup_logging()  # Call the setup function early
 
 # --- FastAPI App Setup ---
 app = FastAPI(

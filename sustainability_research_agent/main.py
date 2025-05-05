@@ -10,9 +10,13 @@ from research_agent.graph_builder import (
     build_unified_graph,
 )
 
+from sustainability_research_agent.logging_config import setup_logging  # Import the setup function
+
 # Optional: Import os and shutil for cleanup if uncommented later
 # Configure logging for main script (optional, if agent.py doesn't cover it)
-# logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
+# logging.basicConfig(...) # Removed old commented config
+
+setup_logging()  # Call the setup function early
 
 try:
     unified_graph_app = build_unified_graph()

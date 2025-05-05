@@ -16,9 +16,11 @@ from research_agent.search_tool import (
     search_langchain_tool,
 )
 
-logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(levelname)s - %(message)s")
-logging.getLogger("langchain").setLevel(logging.WARNING)
-logging.getLogger("pypdf").setLevel(logging.ERROR)  # Silence pypdf info logs
+# Removed logging configuration - Handled centrally by setup_logging() in entry points (main.py/api_server.py)
+# logging.basicConfig(...)
+# logging.getLogger("langchain")...
+# logging.getLogger("pypdf")...
+
 
 # Enable LangChain debug mode for detailed logs
 langchain.debug = True

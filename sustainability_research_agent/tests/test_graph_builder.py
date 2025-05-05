@@ -1,16 +1,17 @@
-import logging
 from unittest.mock import MagicMock
 
 import pytest
 from langchain_core.runnables import Runnable
+from logging_config import setup_logging  # Import setup
 from research_agent.graph_builder import build_unified_graph
 
-logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(...) # Removed - Handled centrally
 
 
 @pytest.fixture(autouse=True)
 def mock_llm_init(mocker):
-    """Automatically mock the LLM initialization for all tests in this module."""
+    """Automatically mock the LLM initialization and setup logging for all tests."""
+    setup_logging()  # Setup logging here for tests
     mock_init = mocker.patch("research_agent.graph_builder.initialize_gemini")
 
     class MockRunnableLLM(MagicMock, Runnable):
