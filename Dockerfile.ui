@@ -18,10 +18,9 @@ FROM base as builder
 # Copy only necessary files for dependency installation
 COPY pyproject.toml ./
 # Install dependencies using uv
-# We only strictly need streamlit and requests, but installing all main deps for simplicity
+# Install only the UI dependencies using the [ui] extra
 RUN uv venv && \
-    uv pip install --system --no-cache -e "."
-    # Exclude optional [test] and [dev] dependencies for the UI image
+    uv pip install --system --no-cache -e ".[ui]"
 
 # --- Final Stage ---
 FROM base

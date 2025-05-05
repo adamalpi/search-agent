@@ -5,14 +5,18 @@ Answer the following questions as best you can. You have access to the following
 Use the following format:
 
 Question: the input question you must answer
-Thought: you should always think about what to do. Critically assess if the user's query requires searching the internet or if you likely possess the information already.
-- **Search**: Use the search tool ONLY for queries requiring real-time information (e.g., current events, weather), specific facts (e.g., statistics, technical details), or topics likely outside your general knowledge base (e.g., very recent developments, niche subjects, specific company data like sustainability reports).
-- **Do NOT search**: Avoid searching for simple greetings, general knowledge questions (e.g., "What is photosynthesis?"), creative tasks, mathematical calculations, or if the answer is likely in the chat history.
+Thought: you should always think about what to do. Critically assess if the user's query requires using a tool or if you likely possess the information already (e.g., in the chat history).
+- **Query Analysis History**: Use this tool ONLY when the user asks about previous analysis tasks, such as "list the last 5 analyses", "what was the summary for the automotive analysis?", "show me task IDs for Tech industry". You can specify 'limit' (how many recent tasks, default 5) and 'industry_filter' (filter by industry name).
+- **DuckDuckGo Search**: Use this tool ONLY for queries requiring real-time information (e.g., current events, weather), specific facts (e.g., statistics, technical details), or topics likely outside your general knowledge base (e.g., very recent developments, niche subjects). Do NOT use it to search for sustainability reports directly; the analysis process handles that.
+- **Download PDF / Extract PDF Text**: These tools are primarily used by the analysis process. You generally shouldn't need to call them directly unless specifically instructed to download or extract text from a PDF URL provided by the user or found via search.
+- **Do NOT use tools**: Avoid using tools for simple greetings, general knowledge questions (e.g., "What is photosynthesis?"), creative tasks, mathematical calculations, or if the answer is likely in the chat history.
+
+**Important**: After receiving the Observation from `Query Analysis History`, you should typically proceed directly to the "Thought: I now know the final answer..." step and formulate the `Final Answer` based on the information provided in the Observation.
 Action: the action to take, should be one of [{tool_names}]
-Action Input: the input to the action
+Action Input: the input to the action. For Query Analysis History, provide a JSON object like {{"limit": 3}} or {{"industry_filter": "Automotive"}} or {{"limit": 10, "industry_filter": "Tech"}}. For other tools, provide the required input string.
 Observation: the result of the action
 ... (this Thought/Action/Action Input/Observation can repeat N times)
-Thought: I now know the final answer based on my internal knowledge or the search results.
+Thought: I now know the final answer based on my internal knowledge or the tool results.
 Final Answer: the final answer to the original input question
 
 Begin!

@@ -2,20 +2,26 @@ import logging
 import asyncio
 import uuid
 from fastapi import FastAPI, HTTPException, BackgroundTasks
-from pydantic import BaseModel
-from typing import Dict, Any
+from pydantic import BaseModel, Field
+from typing import Dict, Any, List, Optional
+from langchain_core.messages import (
+    HumanMessage,
+    AIMessage,
+    BaseMessage,
+)  # For message handling
+from research_agent.database import (
+    init_db,
+    log_task_status,
+)  # Import database functions
 
-# Import necessary components from our existing modules
 # Ensure agent and graph are initialized before FastAPI starts
 # We might need to adjust agent.py/graph_builder.py slightly if they exit on error
 try:
-    # Import components from agent.py
-    from agent import (
-        react_agent_executor,
-    )  # Removed unused GEMINI_MODEL, GEMINI_SUMMARY_MODEL
+    # Removed react_agent_executor import, it's now inside the graph
 
-    # Import the builder function from graph_builder.py
-    from graph_builder import build_graph
+    from research_agent.graph_builder import (
+        build_unified_graph,
+    )  # Import the new unified graph builder
 except ImportError as e:
     print(
         f"FATAL: Could not import agent/graph components. Ensure agent.py and graph_builder.py are correct. Error: {e}"
@@ -26,7 +32,6 @@ except Exception as e:
     exit(1)
 
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
@@ -39,26 +44,32 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# --- Build Graph App ---
-# Build the graph app instance when the server starts
 try:
-    analysis_graph_app = build_graph()
+    unified_graph_app = build_unified_graph()  # Initialize the unified graph
 except Exception as e:
     logging.error(
-        f"Failed to build the analysis graph during API server startup: {e}",
+        f"Failed to build the unified graph during API server startup: {e}",
         exc_info=True,
     )
-    print("FATAL: Could not build the analysis graph. Exiting.")
+    print("FATAL: Could not build the unified graph. Exiting.")
     exit(1)
+
+
+# Initialize the database on startup
+init_db()
 
 
 # --- Data Models (Pydantic) ---
 class QueryRequest(BaseModel):
     query: str
+    # Use Any for messages to simplify Pydantic validation, actual type is List[BaseMessage]
+    # We'll convert dicts to BaseMessage objects before passing to the graph
+    messages: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
 
 
 class QueryResponse(BaseModel):
     response: str
+    messages: List[Dict[str, Any]]  # Return the updated message history
 
 
 class AnalysisRequest(BaseModel):
@@ -87,32 +98,58 @@ async def run_analysis_background(task_id: str, industry: str):
     logging.info(
         f"Starting background analysis task {task_id} for industry: {industry}"
     )
+    # Log initial RUNNING status to DB and update in-memory dict
     analysis_tasks[task_id] = AnalysisTaskStatus(task_id=task_id, status="RUNNING")
+    log_task_status(task_id=task_id, industry=industry, status="RUNNING")
     try:
         inputs = {"industry": industry}
         # Use graph_app.ainvoke for async execution if available/needed
         # For simplicity, running invoke in executor thread pool via asyncio.to_thread
         # Note: LangGraph's invoke might block the event loop if not handled carefully.
         # Consider using graph_app.astream or running in a separate process for true non-blocking.
-        final_state = await asyncio.to_thread(analysis_graph_app.invoke, inputs)
+        # Invoke the unified graph for analysis
+        final_state = await asyncio.to_thread(unified_graph_app.invoke, inputs)
 
-        result = final_state.get("synthesis_result") or final_state.get(
-            "error_message", "Graph finished, but no result/error found."
-        )
-        status = "COMPLETED" if not final_state.get("error_message") else "FAILED"
+        # Extract results based on the UnifiedGraphState structure
+        if final_state.get("error_message"):
+            result = final_state["error_message"]
+            status = "FAILED"
+        elif final_state.get("synthesis_result"):
+            result = final_state["synthesis_result"]
+            status = "COMPLETED"
+        else:
+            result = "Graph finished, but no synthesis result or error message found."
+            status = "UNKNOWN"  # Or potentially FAILED depending on expected outcome
+        # Update in-memory status (for immediate checks via /analysis/{task_id})
         analysis_tasks[task_id] = AnalysisTaskStatus(
             task_id=task_id, status=status, result=result
         )
+        # Log final status and result to the database
+        log_task_status(
+            task_id=task_id,
+            industry=industry,
+            status=status,
+            result_summary=str(result),
+        )  # Ensure result is string
         logging.info(f"Completed background analysis task {task_id}. Status: {status}")
 
     except Exception as e:
         logging.error(
             f"Error in background analysis task {task_id}: {e}", exc_info=True
         )
+        error_message = f"An unexpected error occurred: {e}"
+        # Update in-memory status
         analysis_tasks[task_id] = AnalysisTaskStatus(
             task_id=task_id,
             status="FAILED",
-            result=f"An unexpected error occurred: {e}",
+            result=error_message,
+        )
+        # Log failure to the database
+        log_task_status(
+            task_id=task_id,
+            industry=industry,
+            status="FAILED",
+            result_summary=error_message,
         )
 
 
@@ -121,17 +158,54 @@ async def run_analysis_background(task_id: str, industry: str):
 
 @app.post("/query", response_model=QueryResponse)
 async def handle_query(request: QueryRequest):
-    """Handles general queries using the ReAct agent."""
-    logging.info(f"Received query: {request.query}")
+    """Handles general queries using the unified graph."""
+    logging.info(
+        f"Received query: {request.query}, History length: {len(request.messages)}"
+    )
+
+    # Convert incoming message dicts to LangChain BaseMessage objects
+    previous_messages: List[BaseMessage] = []
+    for msg_data in request.messages:
+        if msg_data.get("type") == "human":
+            previous_messages.append(HumanMessage(**msg_data))
+        elif msg_data.get("type") == "ai":
+            previous_messages.append(AIMessage(**msg_data))
+        # Add other types if needed (SystemMessage, etc.)
+
+    # Prepare input for the graph's UnifiedGraphState
+    # We need both the 'input_query' for routing and 'messages' for history.
+    graph_input = {
+        "input_query": request.query,  # Add the query here for the router
+        "messages": previous_messages + [HumanMessage(content=request.query)],
+    }
+
     try:
-        # Run react_agent_executor.invoke in a thread pool to avoid blocking event loop
-        response = await asyncio.to_thread(
-            react_agent_executor.invoke, {"input": request.query}
+        # Run the unified graph in a thread pool
+        # Use ainvoke if the graph supports true async operations thoroughly
+        final_state = await asyncio.to_thread(unified_graph_app.invoke, graph_input)
+
+        if final_state.get("error_message"):
+            logging.error(
+                f"Error processing query via graph: {final_state['error_message']}"
+            )
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error processing query: {final_state['error_message']}",
+            )
+
+        agent_response = final_state.get(
+            "agent_response", "Agent did not provide a final answer."
         )
-        agent_response = response.get("output", "Agent did not provide a final answer.")
-        return QueryResponse(response=agent_response)
+        updated_messages_lc = final_state.get("messages", [])
+
+        # Convert updated LangChain messages back to dicts for JSON response
+        updated_messages_dict = [msg.dict() for msg in updated_messages_lc]
+
+        return QueryResponse(response=agent_response, messages=updated_messages_dict)
+
     except Exception as e:
         logging.error(f"Error processing query '{request.query}': {e}", exc_info=True)
+        # Catch potential exceptions during graph invocation itself
         raise HTTPException(status_code=500, detail=f"Error processing query: {e}")
 
 
@@ -161,13 +235,4 @@ async def read_root():
     return {"message": "Internet Search and Analysis Agent API is running."}
 
 
-# --- Main execution (for running with uvicorn) ---
 # This part is usually not included if running via `uvicorn api_server:app`
-# if __name__ == "__main__":
-#     import uvicorn
-#     print("Starting API server with Uvicorn...")
-#     # Ensure GOOGLE_API_KEY is set before starting
-#     if not os.getenv("GOOGLE_API_KEY"):
-#          print("Error: GOOGLE_API_KEY environment variable not set.")
-#          exit(1)
-#     uvicorn.run(app, host="0.0.0.0", port=8000)

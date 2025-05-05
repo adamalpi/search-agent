@@ -137,5 +137,5 @@ cython_debug/
 .vscode
 
 # local application data
-internet_search_agent/pdf_cache
-internet_search_agent/summary_cache
+sustainability_research_agent/pdf_cache
+sustainability_research_agent/summary_cache

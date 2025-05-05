@@ -1,7 +1,5 @@
-from unittest.mock import MagicMock
-
 # Use absolute import assuming 'sustainability_research_agent' is in the Python path during tests
-from sustainability_research_agent.search_tool import (
+from research_agent.search_tool import (  # Updated import path
     _perform_duckduckgo_search,
     search_langchain_tool,
 )
@@ -11,16 +9,18 @@ from sustainability_research_agent.search_tool import (
 def test_perform_duckduckgo_search_success(mocker):
     """Test successful search and formatting."""
     # Mock the DDGS class and its text method
-    mock_ddgs_instance = MagicMock()
+    # Mock the DDGS class itself
+    mock_ddgs_class = mocker.patch(
+        "research_agent.search_tool.DDGS",  # Corrected mock path
+    )
+    # Mock the instance returned by DDGS() and its __enter__ method
+    # The instance returned by __enter__ is what's assigned to 'ddgs' in the 'with' block
+    mock_ddgs_instance = mock_ddgs_class.return_value.__enter__.return_value
+    # Configure the 'text' method on the instance returned by __enter__
     mock_ddgs_instance.text.return_value = [
         {"title": "Result 1", "href": "http://example.com/1", "body": "Snippet 1..."},
         {"title": "Result 2", "href": "http://example.com/2", "body": "Snippet 2..."},
     ]
-    # Patch the DDGS context manager
-    mocker.patch(
-        "sustainability_research_agent.search_tool.DDGS",
-        return_value=mock_ddgs_instance,
-    )
 
     query = "test query"
     result = _perform_duckduckgo_search(query, max_results=2)
@@ -37,12 +37,14 @@ def test_perform_duckduckgo_search_success(mocker):
 
 def test_perform_duckduckgo_search_no_results(mocker):
     """Test search returning no results."""
-    mock_ddgs_instance = MagicMock()
-    mock_ddgs_instance.text.return_value = []  # Simulate no results
-    mocker.patch(
-        "sustainability_research_agent.search_tool.DDGS",
-        return_value=mock_ddgs_instance,
+    # Mock the DDGS class itself
+    mock_ddgs_class = mocker.patch(
+        "research_agent.search_tool.DDGS",  # Corrected mock path
     )
+    # Mock the instance returned by DDGS() and its __enter__ method
+    mock_ddgs_instance = mock_ddgs_class.return_value.__enter__.return_value
+    # Configure the 'text' method
+    mock_ddgs_instance.text.return_value = []  # Simulate no results
 
     query = "unlikely query"
     result = _perform_duckduckgo_search(query)
@@ -55,14 +57,16 @@ def test_perform_duckduckgo_search_no_results(mocker):
 
 def test_perform_duckduckgo_search_error(mocker):
     """Test handling of exception during search."""
-    mock_ddgs_instance = MagicMock()
+    # Mock the DDGS class itself
+    mock_ddgs_class = mocker.patch(
+        "research_agent.search_tool.DDGS",  # Corrected mock path
+    )
+    # Mock the instance returned by DDGS() and its __enter__ method
+    mock_ddgs_instance = mock_ddgs_class.return_value.__enter__.return_value
+    # Configure the 'text' method
     mock_ddgs_instance.text.side_effect = Exception(
         "Search engine down"
     )  # Simulate error
-    mocker.patch(
-        "sustainability_research_agent.search_tool.DDGS",
-        return_value=mock_ddgs_instance,
-    )
 
     query = "error query"
     result = _perform_duckduckgo_search(query)
@@ -75,18 +79,17 @@ def test_perform_duckduckgo_search_error(mocker):
 def test_search_langchain_tool_run(mocker):
     """Test running the search via the LangChain Tool wrapper."""
     # Mock the internal function that the tool calls
-    mock_internal_search = mocker.patch(
-        "sustainability_research_agent.search_tool._perform_duckduckgo_search"
-    )
-    mock_internal_search.return_value = "Formatted search results string"
+    # Mock the _run method of the tool instance directly
+    mock_tool_run = mocker.patch.object(search_langchain_tool, "_run")
+    mock_tool_run.return_value = "Formatted search results string"
 
     query = "tool test query"
-    result = search_langchain_tool.run(query)
+    result = search_langchain_tool.run(query)  # This will now call the mocked _run
 
     assert result == "Formatted search results string"
-    mock_internal_search.assert_called_once_with(
+    mock_tool_run.assert_called_once_with(
         query
-    )  # Tool calls func with the query
+    )  # Check if the tool's run method was called
 
 
 def test_search_langchain_tool_attributes():

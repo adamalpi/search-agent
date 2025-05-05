@@ -6,9 +6,7 @@ from pypdf import PdfReader
 from langchain.tools import Tool
 from urllib.parse import urlparse, unquote
 # Remove tempfile import
-# import tempfile
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
@@ -19,7 +17,6 @@ logging.basicConfig(
 # os.path.dirname gets the directory containing it
 # os.path.join creates the full path to 'pdf_cache'
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "pdf_cache")
-# Ensure the cache directory exists
 os.makedirs(CACHE_DIR, exist_ok=True)
 logging.info(f"Using PDF cache directory: {CACHE_DIR}")
 
@@ -42,14 +39,29 @@ def _url_to_filename(url: str) -> str:
     # Optionally, try to get a readable name from the URL path for easier debugging
     try:
         path = urlparse(url).path
-        name = os.path.basename(unquote(path))
-        if name and name.lower().endswith(".pdf"):
-            # Keep only alphanumeric, underscore, hyphen, dot
-            safe_name = "".join(c for c in name if c.isalnum() or c in ("_", "-", "."))
+        raw_name = os.path.basename(unquote(path))
+
+        # Single-pass sanitization: keep only alphanumeric, underscore, hyphen, and dot
+        safe_name = "".join(c for c in raw_name if c.isalnum() or c in ("_", "-", "."))
+
+        # Split the sanitized name first
+        base_name, ext = os.path.splitext(safe_name)
+
+        # Now check if the extension is '.pdf' (case-insensitive) and if base_name exists
+        if ext.lower() == ".pdf" and base_name:
             # Limit length and append hash part for uniqueness
-            return f"{safe_name[:50]}_{url_hash[:10]}.pdf"
-    except Exception:
-        pass  # Fallback to just hash if parsing fails
+            filename = f"{base_name[:50]}_{url_hash[:10]}{ext}"
+            return filename
+    except Exception as e:
+        # Optional: Log the exception if debugging is needed
+        logging.warning(
+            f"Exception during filename generation for {url}: {e}. Falling back to hash."
+        )
+        pass  # Fallback if any error occurs
+
+    # Fallback if parsing, sanitization, or checks fail
+
+    # Fallback if anything above fails
     return f"{url_hash}.pdf"
 
 
@@ -71,8 +83,6 @@ def download_pdf(url: str) -> str:
     if not _is_valid_url(url):
         return f"Error: Invalid URL provided: {url}"
     # Relax the check here, rely on content-type or download error later if not PDF
-    # if not url.lower().endswith('.pdf'):
-    #     return f"Error: URL does not appear to point to a PDF file: {url}"
 
     # Generate filename and check cache
     filename = _url_to_filename(url)
@@ -93,7 +103,6 @@ def download_pdf(url: str) -> str:
         )
         response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
 
-        # Check content type if possible
         content_type = response.headers.get("content-type", "").lower()
         if "application/pdf" not in content_type:
             logging.warning(

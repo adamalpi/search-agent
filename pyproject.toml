@@ -44,6 +44,10 @@ dev = [
     # "mypy",
     # "black",
 ]
+ui = [
+    "streamlit==1.45.0",
+    "requests==2.32.3",
+]
 
 # Optional: Define entry points if you want runnable commands
 # [project.scripts]
