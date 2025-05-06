@@ -135,6 +135,7 @@ cython_debug/
 
 # application
 .vscode
+.DS_Store
 
 # local application data
 pdf_cache/

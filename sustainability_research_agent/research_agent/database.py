@@ -5,8 +5,6 @@ from typing import Any, Dict, List, Optional
 
 # Define the path for the SQLite database file relative to this file
 DB_PATH = os.path.join(os.path.dirname(__file__), "analysis_history.db")
-# Removed logging configuration - Handled centrally by setup_logging() in entry points (main.py/api_server.py)
-# logging.basicConfig(...)
 
 
 def init_db():
@@ -20,6 +18,8 @@ def init_db():
                 industry TEXT NOT NULL,
                 status TEXT NOT NULL,
                 result_summary TEXT,
+                start_time DATETIME,
+                duration_seconds INTEGER,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -36,24 +36,49 @@ def init_db():
             conn.close()
 
 
-def log_task_status(task_id: str, industry: str, status: str, result_summary: Optional[str] = None):
-    """Logs or updates the status of an analysis task in the database."""
+def log_task_status(
+    task_id: str,
+    industry: str,
+    status: str,
+    result_summary: Optional[str] = None,
+    start_time: Optional[str] = None,
+    duration_seconds: Optional[int] = None,
+):
+    """Logs or updates the status, start time, and duration of an analysis task."""
     conn = None  # Ensure conn is defined before try block
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        # Use INSERT OR REPLACE to handle both new tasks and updates
-        # Update timestamp on replace to reflect the latest status change
+        # Use INSERT OR REPLACE. Update timestamp on replace.
+        # We need to handle potential NULLs for start_time and duration carefully.
+        # If the record exists, we might want to preserve the original start_time.
+        # Let's fetch first to preserve start_time if it exists.
+
+        cursor.execute("SELECT start_time FROM analysis_tasks WHERE task_id = ?", (task_id,))
+        existing_task = cursor.fetchone()
+        final_start_time = start_time
+        if existing_task and existing_task[0] and not start_time:
+            final_start_time = existing_task[0]  # Keep existing start_time if not provided in update
+
         cursor.execute(
             """
             INSERT OR REPLACE INTO analysis_tasks
-            (task_id, industry, status, result_summary, timestamp)
-            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            (task_id, industry, status, result_summary, start_time, duration_seconds, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         """,
-            (task_id, industry, status, result_summary),
+            (
+                task_id,
+                industry,
+                status,
+                result_summary,
+                final_start_time,  # Use potentially preserved start_time
+                duration_seconds,
+            ),
         )
         conn.commit()
-        logging.debug(f"Logged status '{status}' for task {task_id} (Industry: {industry})")
+        logging.debug(
+            f"Logged status '{status}' for task {task_id} (Industry: {industry}, Duration: {duration_seconds}s)"
+        )
     except sqlite3.Error as e:
         logging.error(f"Database error logging task {task_id}: {e}", exc_info=True)
     finally:
@@ -95,22 +120,3 @@ def query_tasks(limit: int = 5, industry_filter: Optional[str] = None) -> List[D
         if conn:
             conn.close()
     return results
-
-
-# Example usage (optional, for testing)
-if __name__ == "__main__":
-    print("Initializing DB...")
-    init_db()
-    print("Logging sample tasks...")
-    log_task_status("task-1", "Automotive", "COMPLETED", "Summary for Automotive task 1...")
-    log_task_status("task-2", "Tech", "COMPLETED", "Summary for Tech task 1...")
-    log_task_status("task-3", "Automotive", "FAILED", "Error message...")
-    log_task_status("task-4", "Automotive", "COMPLETED", "Summary for Automotive task 2...")
-    print("Querying last 3 completed tasks:")
-    tasks = query_tasks(limit=3)
-    for task in tasks:
-        print(task)
-    print("\nQuerying last 3 completed Automotive tasks:")
-    auto_tasks = query_tasks(limit=3, industry_filter="Automotive")
-    for task in auto_tasks:
-        print(task)

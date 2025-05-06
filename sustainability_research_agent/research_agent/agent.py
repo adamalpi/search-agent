@@ -2,7 +2,6 @@ import logging
 import os
 
 # Remove summarization/splitting imports, moved to graph_builder
-import langchain
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import ChatPromptTemplate
@@ -16,20 +15,7 @@ from research_agent.search_tool import (
     search_langchain_tool,
 )
 
-# Removed logging configuration - Handled centrally by setup_logging() in entry points (main.py/api_server.py)
-# logging.basicConfig(...)
-# logging.getLogger("langchain")...
-# logging.getLogger("pypdf")...
-
-
-# Enable LangChain debug mode for detailed logs
-langchain.debug = True
-if langchain.debug:
-    logging.info("LangChain global debug mode enabled.")
-
 # --- Configuration ---
-# OLLAMA_MODEL = "deepseek-r1:8b" # Commented out Ollama model
-
 GEMINI_MODEL = "gemini-2.5-pro-preview-03-25"
 GEMINI_SUMMARY_MODEL = "gemini-2.5-flash-preview-04-17"
 PROMPT_FILE = "prompts/prompt_template.txt"
@@ -55,7 +41,7 @@ def initialize_gemini():
         llm_summarizer = ChatGoogleGenerativeAI(
             model=GEMINI_SUMMARY_MODEL,
             google_api_key=google_api_key,
-            request_timeout=30,  # Timeout in seconds for each API call
+            request_timeout=30,
         )
         logging.info(
             f"Successfully initialized summarization Google Gemini model: {GEMINI_SUMMARY_MODEL} with 120s timeout"
@@ -107,13 +93,9 @@ def initialize_agent(llm):
         agent=react_agent,
         tools=TOOLS,
         memory=react_memory,
-        verbose=True,
+        verbose=False,
         handle_parsing_errors=True,
     )
     logging.info("Successfully created ReAct Agent Executor with memory.")
 
     return react_agent_executor
-
-
-# llm, llm_summarizer = initialize_gemini() # Moved initialization to where it's needed
-# react_agent_executor = initialize_agent(llm) # Moved initialization to where it's needed

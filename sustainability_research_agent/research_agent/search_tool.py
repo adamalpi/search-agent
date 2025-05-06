@@ -3,8 +3,7 @@ import logging
 from duckduckgo_search import DDGS
 from langchain.tools import Tool
 
-# Removed logging.basicConfig - Handled centrally
-logger = logging.getLogger(__name__)  # Add module-specific logger
+logger = logging.getLogger(__name__)
 
 # --- Configuration ---
 MAX_SEARCH_RESULTS = 5
@@ -24,22 +23,21 @@ def _perform_duckduckgo_search(query: str, max_results: int = MAX_SEARCH_RESULTS
     Returns:
         A formatted string containing the search results, or a message indicating no results.
     """
-    logger.info(f"Performing DuckDuckGo search for query: '{query}' (max_results={max_results})")  # Use logger
+    logger.info(f"Performing DuckDuckGo search for query: '{query}' (max_results={max_results})")
     results_list = []
     try:
         with DDGS() as ddgs:
             search_results = ddgs.text(query, max_results=max_results)
             if search_results:
                 results_list = list(search_results)[:max_results]
-                logger.info(f"Found {len(results_list)} search results.")  # Use logger
+                logger.info(f"Found {len(results_list)} search results.")
             else:
-                logger.warning(f"No search results found for query: '{query}'")  # Use logger
+                logger.warning(f"No search results found for query: '{query}'")
                 return "No relevant search results found."
     except Exception as e:
-        logger.error(f"Error during DuckDuckGo search for query '{query}': {e}")  # Use logger
+        logger.error(f"Error during DuckDuckGo search for query '{query}': {e}")
         return f"Error during search: {e}"
 
-    # Format results into a string for the LLM
     if not results_list:
         return "No relevant search results found."
 

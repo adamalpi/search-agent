@@ -1,5 +1,8 @@
+import asyncio
 import logging
 import re
+
+from logging_config import setup_logging
 
 # Import only what's needed: model names for printing and the unified graph builder
 from research_agent.agent import (
@@ -10,13 +13,9 @@ from research_agent.graph_builder import (
     build_unified_graph,
 )
 
-from sustainability_research_agent.logging_config import setup_logging  # Import the setup function
-
 # Optional: Import os and shutil for cleanup if uncommented later
-# Configure logging for main script (optional, if agent.py doesn't cover it)
-# logging.basicConfig(...) # Removed old commented config
 
-setup_logging()  # Call the setup function early
+setup_logging()
 
 try:
     unified_graph_app = build_unified_graph()
@@ -26,7 +25,7 @@ except Exception as e:
     exit(1)
 
 
-def main():
+async def main():
     """Runs the main interaction loop using the unified graph."""
     print("--- Unified Search & Analysis Agent (LangGraph) ---")
     print(f"Using main LLM model: {GEMINI_MODEL}")
@@ -46,38 +45,21 @@ def main():
         if not user_input.strip():
             continue
 
-        # Prepare inputs for the unified graph
         inputs = {}
         analysis_match = re.match(r"analyze industry\s+(.+)", input_lower)
         if analysis_match:
             industry_name = analysis_match.group(1).strip()
             print(f"\n--- Starting Unified Graph (Analysis Path) for: {industry_name} ---")
             inputs = {"industry": industry_name}
-            # Clear history for analysis tasks? Or keep it? Let's clear for now.
         else:
             print(f"\n--- Starting Unified Graph (Agent Path) for: {user_input} ---")
-            # Pass the current query and the message history
-            # The graph expects LangChain message objects in the 'messages' key
-            # For simplicity here, we'll just pass the query. The graph's run_basic_agent
-            # node currently creates its own memory, but ideally, we'd pass history.
-            # Let's adapt to pass history (as dicts for simplicity, graph node converts)
-            # inputs = {"input_query": user_input, "messages": chat_history}
-            # Reverting to simpler input for now, as graph node handles memory internally
             inputs = {
                 "input_query": user_input,
                 "messages": [],
-            }  # Pass empty history for now
+            }
 
         try:
-            # Use stream for better feedback (optional)
-            # final_state = None
-            # for event in unified_graph_app.stream(inputs, {"recursion_limit": 10}):
-            #     print(f"Event: {event}")
-            #     # Extract final state from the stream if possible
-            #     # This depends on the structure of your stream events
-            #     # Example: if "__end__" in event: final_state = event["__end__"]
-
-            final_state = unified_graph_app.invoke(inputs, {"recursion_limit": 10})
+            final_state = await unified_graph_app.ainvoke(inputs, {"recursion_limit": 10})
 
             print("\n--- Graph Execution Complete ---")
 
@@ -87,16 +69,13 @@ def main():
                 agent_response = final_state["agent_response"]
                 print("\nAgent Response:")
                 print(agent_response)
-                # Update CLI history (simplified)
-                # chat_history.append({"type": "human", "content": user_input})
-                # chat_history.append({"type": "ai", "content": agent_response})
             elif final_state.get("synthesis_result"):
                 analysis_result = final_state["synthesis_result"]
                 print("\nAnalysis Result:")
                 print(analysis_result)
             else:
                 print("\nGraph finished, but no standard output (agent_response/synthesis_result/error_message) found.")
-                print("Final State:", final_state)  # Print raw state for debugging
+                print("Final State:", final_state)
 
         except Exception as e:
             logging.error(
@@ -109,4 +88,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

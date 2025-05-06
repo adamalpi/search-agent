@@ -7,8 +7,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 from research_agent.database import query_tasks
 
-# Removed logging.basicConfig - Handled centrally
-logger = logging.getLogger(__name__)  # Add module-specific logger
+logger = logging.getLogger(__name__)
 
 
 # --- Pydantic Schema for Tool Arguments ---
@@ -28,7 +27,7 @@ def _query_analysis_history_func(tool_input: str) -> str:
     Parses JSON input, queries the database for completed analysis tasks, and formats the results.
     Input should be a JSON string like '{"limit": 5, "industry_filter": "Automotive"}'.
     """
-    logger.info(f"Tool: Received input string: {tool_input}")  # Use logger
+    logger.info(f"Tool: Received input string: {tool_input}")
     limit = 5
     industry_filter = None
 
@@ -37,24 +36,17 @@ def _query_analysis_history_func(tool_input: str) -> str:
         validated_data = QueryHistorySchema.model_validate(data)
         limit = validated_data.limit
         industry_filter = validated_data.industry_filter
-        logger.info(f"Tool: Parsed arguments - limit={limit}, industry='{industry_filter}'")  # Use logger
+        logger.info(f"Tool: Parsed arguments - limit={limit}, industry='{industry_filter}'")
 
     except json.JSONDecodeError:
-        logger.warning(f"Tool: Input is not valid JSON: {tool_input}. Using default parameters.")  # Use logger
-        # Proceed with default parameters if input is not valid JSON
-        # Alternatively, return an error message:
-        # return f"Error: Input must be a valid JSON string. Received: {tool_input}"
+        logger.warning(f"Tool: Input is not valid JSON: {tool_input}. Using default parameters.")
     except ValidationError as e:
-        logger.warning(f"Tool: Input validation failed: {e}. Using default parameters.")  # Use logger
-        # Proceed with default parameters if validation fails
-        # Alternatively, return an error message:
-        # return f"Error: Input validation failed: {e}. Received: {tool_input}"
+        logger.warning(f"Tool: Input validation failed: {e}. Using default parameters.")
     except Exception as e:
-        logger.error(f"Tool: Unexpected error processing input '{tool_input}': {e}", exc_info=True)  # Use logger
+        logger.error(f"Tool: Unexpected error processing input '{tool_input}': {e}", exc_info=True)
         return f"Error processing tool input: {e}"
 
-    # --- Original query logic starts here ---
-    logger.info(f"Tool: Querying analysis history (limit={limit}, industry='{industry_filter}')")  # Use logger
+    logger.info(f"Tool: Querying analysis history (limit={limit}, industry='{industry_filter}')")
     try:
         tasks: List[Dict[str, Any]] = query_tasks(limit=limit, industry_filter=industry_filter)
 
@@ -77,7 +69,7 @@ def _query_analysis_history_func(tool_input: str) -> str:
         return formatted_results.strip()
 
     except Exception as e:
-        logger.error(f"Error querying analysis history: {e}", exc_info=True)  # Use logger
+        logger.error(f"Error querying analysis history: {e}", exc_info=True)
         return f"An error occurred while querying the analysis history: {e}"
 
 
@@ -86,20 +78,4 @@ query_analysis_history_tool = Tool(
     name="Query Analysis History",
     func=_query_analysis_history_func,
     description='Queries the history of successfully completed sustainability analysis tasks, returning the full summary for each. Use it to answer questions about past analyses, like listing the \'last N\' tasks or finding tasks for a specific industry. Input MUST be a JSON string specifying parameters, e.g., \'{{"limit": 3}}\' or \'{{"industry_filter": "Automotive"}}\' or \'{{"limit": 10, "industry_filter": "Tech"}}\'. \'limit\' defaults to 5 if not provided.',  # noqa: E501
-    # args_schema removed - tool now expects a single string input
 )
-
-# Example usage (optional, for testing)
-if __name__ == "__main__":
-    print("Testing Query Analysis History Tool...")
-    # Assuming database.py has run and populated some data
-    print("\nQuerying last 2 tasks:")
-    print(query_analysis_history_tool.run('{"limit": 2}'))  # Input must be JSON string
-    print("\nQuerying last 2 Automotive tasks:")
-    print(query_analysis_history_tool.run('{"limit": 2, "industry_filter": "Automotive"}'))  # Input must be JSON string
-    print("\nQuerying tasks for 'NonExistentIndustry':")
-    print(query_analysis_history_tool.run('{"industry_filter": "NonExistentIndustry"}'))  # Input must be JSON string
-    print("\nQuerying with invalid JSON:")
-    print(query_analysis_history_tool.run('{"limit": "not-an-int"}'))  # Example of validation failure
-    print("\nQuerying with non-JSON string:")
-    print(query_analysis_history_tool.run("limit 3"))  # Example of JSON decode failure

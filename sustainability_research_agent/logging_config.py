@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 
-DEFAULT_LOG_LEVEL = "DEBUG"
+DEFAULT_LOG_LEVEL = "INFO"
 LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
 
@@ -31,19 +31,12 @@ def setup_logging():
     logging.getLogger("pypdf").setLevel(logging.ERROR)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
-    # Add uvicorn specific levels only if needed (e.g., in api_server)
-    # logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
-    # logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
-    # Log the effective level
     root_logger = logging.getLogger()
     root_logger.info(f"Logging configured with level: {logging.getLevelName(root_logger.level)}")
 
 
 if __name__ == "__main__":
-    # Example usage: Set environment variable and run this script
-    # export LOG_LEVEL=DEBUG
-    # python sustainability_research_agent/logging_config.py
     setup_logging()
     logging.debug("This is a debug message.")
     logging.info("This is an info message.")

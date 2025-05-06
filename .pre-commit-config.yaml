@@ -14,3 +14,14 @@ repos:
     # Run the formatter on Python files.
     - id: ruff-format
       files: \.py$  # Match files ending in .py
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.6.0
+  hooks:
+     - id: check-yaml
+     - id: check-toml
+     - id: check-json
+     - id: check-added-large-files
+       args: ['--maxkb=1024'] # Checks for files larger than 1MB
+     - id: check-merge-conflict
+     - id: end-of-file-fixer
+     - id: trailing-whitespace
