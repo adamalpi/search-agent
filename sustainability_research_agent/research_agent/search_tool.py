@@ -62,5 +62,3 @@ search_langchain_tool = Tool(
     func=_perform_duckduckgo_search,
     description="Useful for when you need to answer questions about current events, specific facts, or information not found in your internal knowledge base. Input should be a search query.",  # noqa: E501
 )
-
-# --- Example Usage (Moved to tests/test_search_tool.py) ---

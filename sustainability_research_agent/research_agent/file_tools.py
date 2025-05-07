@@ -12,9 +12,6 @@ logger = logging.getLogger(__name__)
 
 # --- Configuration ---
 # Use a persistent cache directory relative to this file's location
-# __file__ gives the path of the current file (file_tools.py)
-# os.path.dirname gets the directory containing it
-# os.path.join creates the full path to 'pdf_cache'
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
 CACHE_DIR = os.path.join(PROJECT_ROOT, "pdf_cache")
 logger.info(f"PDF cache directory configured: {CACHE_DIR}")

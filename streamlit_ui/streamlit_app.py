@@ -89,8 +89,8 @@ if "analysis_result" not in st.session_state:
     st.session_state.analysis_result = None
 if "submitted_industry" not in st.session_state:
     st.session_state.submitted_industry = None
-if "analysis_duration" not in st.session_state:  # ADDED
-    st.session_state.analysis_duration = None  # ADDED
+if "analysis_duration" not in st.session_state:
+    st.session_state.analysis_duration = None
 
 
 if st.button("Start Analysis", key="start_analysis"):
@@ -98,7 +98,7 @@ if st.button("Start Analysis", key="start_analysis"):
         st.session_state.analysis_task_id = None  # Reset previous task
         st.session_state.analysis_status = None
         st.session_state.analysis_result = None
-        st.session_state.analysis_duration = None  # ADDED Reset duration
+        st.session_state.analysis_duration = None
         st.session_state.submitted_industry = industry_input
         with st.spinner(f"Submitting analysis request for '{industry_input}'..."):
             submit_response = submit_analysis_request(industry_input)
@@ -126,7 +126,7 @@ if st.session_state.analysis_task_id:
         if status_data:
             st.session_state.analysis_status = status_data.get("status", "UNKNOWN")
             st.session_state.analysis_result = status_data.get("result")
-            st.session_state.analysis_duration = status_data.get("duration_seconds")  # ADDED Get duration
+            st.session_state.analysis_duration = status_data.get("duration_seconds")
             status_placeholder.info(f"Status: {st.session_state.analysis_status}")
             if st.session_state.analysis_status not in ["PENDING", "RUNNING"]:
                 break  # Exit loop if completed or failed
@@ -140,18 +140,18 @@ if st.session_state.analysis_task_id:
         f" (Duration: {st.session_state.analysis_duration} seconds)"
         if st.session_state.analysis_duration is not None
         else ""
-    )  # ADDED duration string helper
+    )
 
     if st.session_state.analysis_status == "COMPLETED":
-        status_placeholder.success(f"Status: {st.session_state.analysis_status}{duration_str}")  # ADDED duration_str
+        status_placeholder.success(f"Status: {st.session_state.analysis_status}{duration_str}")
         st.markdown("**Analysis Result:**")
         st.markdown(st.session_state.analysis_result)
     elif st.session_state.analysis_status == "FAILED":
-        status_placeholder.error(f"Status: {st.session_state.analysis_status}{duration_str}")  # ADDED duration_str
+        status_placeholder.error(f"Status: {st.session_state.analysis_status}{duration_str}")
         st.markdown("**Error Details:**")
         st.error(st.session_state.analysis_result)
     elif st.session_state.analysis_status not in [
         "PENDING",
         "RUNNING",
     ]:  # Handle UNKNOWN or other states
-        status_placeholder.warning(f"Status: {st.session_state.analysis_status}{duration_str}")  # ADDED duration_str
+        status_placeholder.warning(f"Status: {st.session_state.analysis_status}{duration_str}")

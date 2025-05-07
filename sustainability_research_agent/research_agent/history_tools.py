@@ -10,7 +10,6 @@ from research_agent.database import query_tasks
 logger = logging.getLogger(__name__)
 
 
-# --- Pydantic Schema for Tool Arguments ---
 class QueryHistorySchema(BaseModel):
     """Input schema for the Query Analysis History tool."""
 
@@ -21,7 +20,6 @@ class QueryHistorySchema(BaseModel):
     )
 
 
-# --- Tool Function ---
 def _query_analysis_history_func(tool_input: str) -> str:
     """
     Parses JSON input, queries the database for completed analysis tasks, and formats the results.
@@ -73,7 +71,6 @@ def _query_analysis_history_func(tool_input: str) -> str:
         return f"An error occurred while querying the analysis history: {e}"
 
 
-# --- LangChain Tool Definition ---
 query_analysis_history_tool = Tool(
     name="Query Analysis History",
     func=_query_analysis_history_func,
